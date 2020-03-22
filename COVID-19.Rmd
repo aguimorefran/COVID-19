@@ -1,0 +1,110 @@
+---
+title: "COVID-19 - Análisis"
+author: "Juan Diego Martínez y Fco. Aguilera"
+date: "22/3/2020"
+output: html_document
+---
+
+# Importación y preparación 
+Se va a usar este [dataset](https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv), actualizado hasta el día 20/03/2020.
+
+Librerías:
+
+* *tidyverse* y *magritr* para manipulación.
+* *stringr* para parsear los datos en bruto.
+* *lubridate* para trabajar con fechas.
+* *ggplot2* para visualización de datos.
+
+```{r imporacion, warning = FALSE, message = FALSE}
+library(tidyverse)
+library(stringr)
+library(magrittr)
+library(lubridate)
+library(ggplot2)
+
+#Función que extrae los números de un string
+numextract <- function(string){
+  unlist(regmatches(string,gregexpr("[[:digit:]]+\\.*[[:digit:]]*",string)))
+} #end of func
+
+# DESCARGADO EL 20 DE MARZO
+covid <- read_csv("covid/COVID19_open_line_list.csv")
+colnames(covid)
+```
+
+# Minado de reglas de asociación
+
+En este apartado se va a intentar sacar reglas de asociación para ayudar a comprender cómo actúa el virus y qué factores afectan más en la mortalidad. Para ello vamos a conservar las columnas que apriori parezcan más relevantes.  
+Se van a usar las librerías *arules* y *arulesViz*, tanto para sacar las reglas
+
+## Limpieza
+Algunas de estas columnas estan "sucias", y tenemos que preparar los datos pre analisis.
+
+```{r limpieza, warning = FALSE, message = FALSE}
+library(arules)
+library(arulesViz)
+
+# Selección de columnas
+covidRA <- covid %>%
+  select(age, sex, country, province, date_onset_symptoms, date_admission_hospital, date_confirmation, lives_in_Wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge)
+
+# Pasar valores N/A a NA
+covidRA[covidRA == "N/A"] <- NA
+
+#Age
+unique(covidRA$age)
+covidRA$age <- covidRA$age %>%
+  as.numeric() %>%
+  discretize(breaks = 10)
+summary(factor(covidRA$age))
+
+#Sex
+covidRA$sex <- tolower(covidRA$sex)
+covidRA$sex[covidRA$sex == 4000] <- NA
+summary(factor((covidRA$sex)))
+
+#DATE_ONSET_SYMPTONS
+covidRA$date_onset_symptoms <- dmy(covidRA$date_onset_symptoms)
+
+#DATE_ADMISSION_HOSPITAL
+covidRA$date_admission_hospital <- dmy(covidRA$date_admission_hospital)
+
+#DATE_CONFIRMATION
+covidRA$date_confirmation <- dmy(covidRA$date_confirmation)
+
+#LIVES_IN_WUHAN <- se renombra STAYED_WUHAN (si vive o ha visitado wuhan recientemente)
+covidRA <- covidRA %>% rename(stayed_wuhan = lives_in_Wuhan)
+covidRA$stayed_wuhan <- tolower(covidRA$stayed_wuhan)
+
+#REPORTED_MARKET_EXPOSURE
+covidRA$reported_market_exposure[covidRA$reported_market_exposure == "working in another market in Wuhan"] = "yes"
+summary(factor(covidRA$reported_market_exposure))
+
+#CHRONIC_DISEASE_BINARY
+summary(factor(covidRA$chronic_disease_binary))
+
+#DATE_DEATH_OR_DISCHARGE
+summary(factor(covidRA$date_death_or_discharge))
+```
+
+## Procesado
+Ya que tenemos los datos limpios, vamos a añadir más columnas.  
+
+* `time_symptom_confirmation`: tiempo desde que se observan los síntomas hasta que se confirma el contagio.
+
+```{r time symptom confirmation, warning = FALSE, message = FALSE}
+covidRA <- covidRA %>%
+  mutate(time_symptom_confirmation = difftime(date_confirmation, date_onset_symptoms, units = "days"))
+```
+
+* `time_symptom_hospital`: tiempo desde que se observan los síntomas hasta que se hospitaliza.
+```{r time symptom hospital, warning = FALSE, message = FALSE}
+covidRA <- covidRA %>%
+  mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
+```
+
+
+##TODO ARULES: tiempo sintoma-muerte, hospi-muerte, confirmacion-muerte
+
+
+
