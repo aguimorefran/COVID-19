@@ -32,59 +32,62 @@ covid <- read_csv("covid/COVID19_open_line_list.csv")
 colnames(covid)
 ```
 
+## Limpieza
+```{r limpieza, warning = FALSE, message = FALSE}
+covid[covid == "N/A"] <- NA
+
+#Age
+unique(covid$age)
+covid$age <- covid$age %>%
+  as.numeric()
+
+#Sex
+covid$sex <- tolower(covid$sex)
+covid$sex[covid$sex == 4000] <- NA
+summary(factor((covid$sex)))
+
+#DATE_ONSET_SYMPTONS
+covid$date_onset_symptoms <- dmy(covid$date_onset_symptoms)
+
+#DATE_ADMISSION_HOSPITAL
+covid$date_admission_hospital <- dmy(covid$date_admission_hospital)
+
+#DATE_CONFIRMATION
+covid$date_confirmation <- dmy(covid$date_confirmation)
+
+#LIVES_IN_WUHAN <- se renombra STAYED_WUHAN (si vive o ha visitado wuhan recientemente)
+covid <- covid %>% rename(stayed_wuhan = lives_in_Wuhan)
+covid$stayed_wuhan <- tolower(covid$stayed_wuhan)
+
+#REPORTED_MARKET_EXPOSURE
+covid$reported_market_exposure[covid$reported_market_exposure == "working in another market in Wuhan"] = "yes"
+summary(factor(covid$reported_market_exposure))
+
+#CHRONIC_DISEASE_BINARY
+summary(factor(covid$chronic_disease_binary))
+
+#DATE_DEATH_OR_DISCHARGE
+summary(factor(covid$date_death_or_discharge))
+```
+
+***
+
 # Minado de reglas de asociación
 
 En este apartado se va a intentar sacar reglas de asociación para ayudar a comprender cómo actúa el virus y qué factores afectan más en la mortalidad. Para ello vamos a conservar las columnas que apriori parezcan más relevantes.  
 Se van a usar las librerías *arules* y *arulesViz*, tanto para sacar las reglas
 
-## Limpieza
-Algunas de estas columnas estan "sucias", y tenemos que preparar los datos pre analisis.
 
-```{r limpieza, warning = FALSE, message = FALSE}
+```{r arules, warning = FALSE, message = FALSE}
 library(arules)
 library(arulesViz)
 
 # Selección de columnas
 covidRA <- covid %>%
-  select(age, sex, country, province, date_onset_symptoms, date_admission_hospital, date_confirmation, lives_in_Wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge)
+  select(age, sex, country, province, date_onset_symptoms, date_admission_hospital, date_confirmation, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge)
 
 # Pasar valores N/A a NA
-covidRA[covidRA == "N/A"] <- NA
 
-#Age
-unique(covidRA$age)
-covidRA$age <- covidRA$age %>%
-  as.numeric() %>%
-  discretize(breaks = 10)
-summary(factor(covidRA$age))
-
-#Sex
-covidRA$sex <- tolower(covidRA$sex)
-covidRA$sex[covidRA$sex == 4000] <- NA
-summary(factor((covidRA$sex)))
-
-#DATE_ONSET_SYMPTONS
-covidRA$date_onset_symptoms <- dmy(covidRA$date_onset_symptoms)
-
-#DATE_ADMISSION_HOSPITAL
-covidRA$date_admission_hospital <- dmy(covidRA$date_admission_hospital)
-
-#DATE_CONFIRMATION
-covidRA$date_confirmation <- dmy(covidRA$date_confirmation)
-
-#LIVES_IN_WUHAN <- se renombra STAYED_WUHAN (si vive o ha visitado wuhan recientemente)
-covidRA <- covidRA %>% rename(stayed_wuhan = lives_in_Wuhan)
-covidRA$stayed_wuhan <- tolower(covidRA$stayed_wuhan)
-
-#REPORTED_MARKET_EXPOSURE
-covidRA$reported_market_exposure[covidRA$reported_market_exposure == "working in another market in Wuhan"] = "yes"
-summary(factor(covidRA$reported_market_exposure))
-
-#CHRONIC_DISEASE_BINARY
-summary(factor(covidRA$chronic_disease_binary))
-
-#DATE_DEATH_OR_DISCHARGE
-summary(factor(covidRA$date_death_or_discharge))
 ```
 
 ## Procesado
@@ -103,6 +106,9 @@ covidRA <- covidRA %>%
   mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
 ```
 
+* `time_symptom_deth`: tiempo desde que se observan síntomas hasta que muere.
+```{r time symptom death}
+```
 
 ##TODO ARULES: tiempo sintoma-muerte, hospi-muerte, confirmacion-muerte
 
