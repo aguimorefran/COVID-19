@@ -84,10 +84,9 @@ library(arulesViz)
 
 # Selección de columnas
 covidRA <- covid %>%
-  select(age, sex, country, province, date_onset_symptoms, date_admission_hospital, date_confirmation, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge)
+  select(age, sex, date_onset_symptoms, date_admission_hospital, date_confirmation, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge)
 
-# Pasar valores N/A a NA
-
+covidRA$age <- discretize(covid$age, breaks = 6)
 ```
 
 ## Procesado
@@ -106,11 +105,27 @@ covidRA <- covidRA %>%
   mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
 ```
 
-* `time_symptom_deth`: tiempo desde que se observan síntomas hasta que muere.
-```{r time symptom death}
+* `time_symptom_death`: tiempo desde que se observan síntomas hasta que muere.
+```{r time symptom death, warning = FALSE, message = FALSE}
+# usamos ifelse para hacer un mutado condicional ya que la columna 
+covidRA <- covidRA %>%
+  mutate(time_symptom_death = (ifelse(test = is.Date(date_death_or_discharge), 
+                                      yes = difftime(date_death_or_discharge, date_onset_symptoms),
+                                      no = NA)))
 ```
 
-##TODO ARULES: tiempo sintoma-muerte, hospi-muerte, confirmacion-muerte
+## Minado
+```{r discretizacion valores, warning = FALSE, message = FALSE, echo = FALSE}
+# eliminamos las columnas con fechas
+covidRA <- covidRA %>%
+  select(-starts_with("date"))
+# al intentar aplicar apriori() nos dice que las columnas no estan discretizadas
+covidRA$sex <- as.factor(covidRA$sex)
+covidRA$stayed_wuhan <- as.factor(covidRA$stayed_wuhan)
+covidRA$reported_market_exposure <- as.factor(covidRA$reported_market_exposure)
+covidRA$chronic_disease_binary <- as.factor(covidRA$chronic_disease_binary)
 
+# DISCRETIZE
+```
 
 
