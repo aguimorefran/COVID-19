@@ -44,6 +44,7 @@ covid$age <- covid$age %>%
 #Sex
 covid$sex <- tolower(covid$sex)
 covid$sex[covid$sex == 4000] <- NA
+covid$sex <- as.factor(covid$sex)
 summary(factor((covid$sex)))
 
 #DATE_ONSET_SYMPTONS
@@ -58,16 +59,21 @@ covid$date_confirmation <- dmy(covid$date_confirmation)
 #LIVES_IN_WUHAN <- se renombra STAYED_WUHAN (si vive o ha visitado wuhan recientemente)
 covid <- covid %>% rename(stayed_wuhan = lives_in_Wuhan)
 covid$stayed_wuhan <- tolower(covid$stayed_wuhan)
+covid$stayed_wuhan[covid$stayed_wuhan == 0] <- "no"
+covid$stayed_wuhan[covid$stayed_wuhan %in% c(1, "yes")] <- "yes"
+covid$stayed_wuhan[covid$stayed_wuhan != "no"] <- "yes"
 
 #REPORTED_MARKET_EXPOSURE
 covid$reported_market_exposure[covid$reported_market_exposure == "working in another market in Wuhan"] = "yes"
 summary(factor(covid$reported_market_exposure))
 
 #CHRONIC_DISEASE_BINARY
+covid$chronic_disease_binary <- as.factor(covid$chronic_disease_binary)
 summary(factor(covid$chronic_disease_binary))
 
-#DATE_DEATH_OR_DISCHARGE
-summary(factor(covid$date_death_or_discharge))
+#OUTCOME
+covid$outcome[covid$outcome %in% c("Discharged", "discharge", "discharged", "recovered")] <- "discharge"
+covid$outcome[covid$outcome == "died"] <- "death"
 ```
 
 ***
@@ -84,48 +90,32 @@ library(arulesViz)
 
 # Selección de columnas
 covidRA <- covid %>%
-  select(age, sex, date_onset_symptoms, date_admission_hospital, date_confirmation, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge)
-
-covidRA$age <- discretize(covid$age, breaks = 6)
+  select(age, sex, date_onset_symptoms, date_admission_hospital, date_confirmation, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge, outcome)
 ```
 
-## Procesado
-Ya que tenemos los datos limpios, vamos a añadir más columnas.  
+## Limpieza y preparación
 
-* `time_symptom_confirmation`: tiempo desde que se observan los síntomas hasta que se confirma el contagio.
-
-```{r time symptom confirmation, warning = FALSE, message = FALSE}
+Para el uso del algoritmo `apriori` necesitamos discretizar los valores. Como el algoritmo nos lo hace automáticamente, vamos a hacerlo nosotros para utilizar los intervalos que queramos.
+```{r limpieza y discretizacion, warning = FALSE, message = FALSE}
+covidRA$age <- discretize(covidRA$age, breaks = 7)
+covidRA$reported_market_exposure <- as.factor(covidRA$reported_market_exposure)
+covidRA$stayed_wuhan <- as.factor(covidRA$stayed_wuhan)
 covidRA <- covidRA %>%
-  mutate(time_symptom_confirmation = difftime(date_confirmation, date_onset_symptoms, units = "days"))
+  select(-c(date_onset_symptoms, date_admission_hospital, date_confirmation,
+            date_death_or_discharge))
 ```
 
-* `time_symptom_hospital`: tiempo desde que se observan los síntomas hasta que se hospitaliza.
-```{r time symptom hospital, warning = FALSE, message = FALSE}
-covidRA <- covidRA %>%
-  mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
-```
-
-* `time_symptom_death`: tiempo desde que se observan síntomas hasta que muere.
-```{r time symptom death, warning = FALSE, message = FALSE}
-# usamos ifelse para hacer un mutado condicional ya que la columna 
-covidRA <- covidRA %>%
-  mutate(time_symptom_death = (ifelse(test = is.Date(date_death_or_discharge), 
-                                      yes = difftime(date_death_or_discharge, date_onset_symptoms),
-                                      no = NA)))
+Y una vez limpiado el dataframe se nos queda así.
+```{r, warning = FALSE, message = FALSE}
+colnames(covidRA)
 ```
 
 ## Minado
-```{r discretizacion valores, warning = FALSE, message = FALSE, echo = FALSE}
-# eliminamos las columnas con fechas
-covidRA <- covidRA %>%
-  select(-starts_with("date"))
-# al intentar aplicar apriori() nos dice que las columnas no estan discretizadas
-covidRA$sex <- as.factor(covidRA$sex)
-covidRA$stayed_wuhan <- as.factor(covidRA$stayed_wuhan)
-covidRA$reported_market_exposure <- as.factor(covidRA$reported_market_exposure)
-covidRA$chronic_disease_binary <- as.factor(covidRA$chronic_disease_binary)
 
-# DISCRETIZE
+```{r, warning = FALSE, message = FALSE}
+rules <- apriori(covidRA,
+                 parameter = list(supp = 0.0001, confidence = 0.25),
+                 appearance = list(rhs =c("outcome=discharge"), default = "lhs"))
+
 ```
-
 
