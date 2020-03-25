@@ -5,8 +5,10 @@ date: "22/3/2020"
 output: html_document
 ---
 
-# Importación y preparación 
-Se va a usar este [dataset](https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv), actualizado hasta el día 20/03/2020.
+# Vista mundial
+## Importación y preparación
+### DATASETS
+https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, actualizado hasta el día 20/03/2020.
 
 Librerías:
 
@@ -32,7 +34,7 @@ covid <- read_csv("covid/COVID19_open_line_list.csv")
 colnames(covid)
 ```
 
-## Limpieza
+### Limpieza y adición de columnas
 ```{r limpieza, warning = FALSE, message = FALSE}
 covid[covid == "N/A"] <- NA
 
@@ -45,7 +47,7 @@ covid$age <- covid$age %>%
 covid$sex <- tolower(covid$sex)
 covid$sex[covid$sex == 4000] <- NA
 covid$sex <- as.factor(covid$sex)
-summary(factor((covid$sex)))
+#summary(factor((covid$sex)))
 
 #DATE_ONSET_SYMPTONS
 covid$date_onset_symptoms <- dmy(covid$date_onset_symptoms)
@@ -65,51 +67,28 @@ covid$stayed_wuhan <- tolower(covid$stayed_wuhan)
 covid$stayed_wuhan[covid$stayed_wuhan == 0] <- "no"
 covid$stayed_wuhan[covid$stayed_wuhan %in% c(1, "yes")] <- "yes"
 covid$stayed_wuhan[covid$stayed_wuhan != "no"] <- "yes"
+covid$stayed_wuhan <- as.factor(covid$stayed_wuhan)
+#summary(covid$stayed_wuhan)
+
 
 #REPORTED_MARKET_EXPOSURE
 covid$reported_market_exposure[covid$reported_market_exposure == "working in another market in Wuhan"] = "yes"
-summary(factor(covid$reported_market_exposure))
+covid$reported_market_exposure <- as.factor(covid$reported_market_exposure)
+#summary(factor(covid$reported_market_exposure))
 
 #CHRONIC_DISEASE_BINARY
 covid$chronic_disease_binary <- as.factor(covid$chronic_disease_binary)
-summary(factor(covid$chronic_disease_binary))
+#summary(factor(covid$chronic_disease))
+
 
 #OUTCOME
 covid$outcome[covid$outcome %in% c("Discharged", "discharge", "discharged", "recovered")] <- "discharge"
 covid$outcome[covid$outcome == "died"] <- "death"
-```
+covid$outcome <- as.factor(covid$outcome)
+#summary(covid$outcome)
 
-***
-
-# Minado de reglas de asociación
-
-En este apartado se va a intentar sacar reglas de asociación para ayudar a comprender cómo actúa el virus y qué factores afectan más en la mortalidad. Para ello vamos a conservar las columnas que apriori parezcan más relevantes.  
-Se van a usar las librerías *arules* y *arulesViz*, tanto para sacar las reglas
-
-
-```{r arules, warning = FALSE, message = FALSE}
-library(arules)
-library(arulesViz)
-
-# Selección de columnas
-covidRA <- covid %>%
-  select(age, sex, date_onset_symptoms, date_admission_hospital, date_confirmation, symptoms, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge, outcome)
-```
-
-## Limpieza y preparación
-
-Para el uso del algoritmo `apriori` necesitamos discretizar los valores. Como el algoritmo nos lo hace automáticamente, vamos a hacerlo nosotros para utilizar los intervalos que queramos.
-```{r limpieza y discretizacion, warning = FALSE, message = FALSE}
-covidRA$age <- discretize(covidRA$age, breaks = 7)
-covidRA$reported_market_exposure <- as.factor(covidRA$reported_market_exposure)
-covidRA$stayed_wuhan <- as.factor(covidRA$stayed_wuhan)
-covidRA$outcome <- as.factor(covidRA$outcome)
-covidRA <- covidRA %>% rename("chronic_disease" = "chronic_disease_binary")
-```
-
-A partir de la columna `symptoms`, sacamos columnas binarias como `cough`, `fever`, `pneumonia`, etc, y algunas contando el número de días que tardan los enfermos en ingresar, morir, etc.
-```{r sintomas, warning=FALSE, message=FALSE}
-covidRA <- covidRA %>%
+#CREAMOS COLUMNAS BINARIAS CON CADA SINTOMA
+covid <- covid %>%
   mutate(pneumonia = ifelse(grepl("pneumonia", symptoms), "yes", "no")) %>%
   mutate(fever = ifelse(grepl("fever", symptoms), "yes", "no")) %>%
   mutate(cough = ifelse(grepl("cough", symptoms), "yes", "no")) %>%
@@ -124,74 +103,42 @@ covidRA <- covidRA %>%
   mutate(breath_shortness = ifelse(grepl("shortness", symptoms), "yes", "no")) %>%
   mutate(muscular = ifelse(grepl("musc", symptoms), "yes", "no")) %>%
   mutate(fatigue = ifelse(grepl("fatigue", symptoms), "yes", "no"))
-```
 
-* `time_symptom_confirmation`: tiempo desde que se observan los síntomas hasta que se confirma el contagio.
-
-```{r, warning = FALSE, message = FALSE}
-covidRA <- covidRA %>%
+# TIEMPO DESDE DETECCION DE SINTOMAS HASTA CONFIRMACION
+covid <- covid %>%
   mutate(time_symptom_confirmation = difftime(date_confirmation, date_onset_symptoms, units = "days"))
-covidRA$time_symptom_confirmation <- abs(as.numeric(covidRA$time_symptom_confirmation))
-covidRA <- covidRA %>% filter(time_symptom_confirmation != outliers::outlier(time_symptom_confirmation))
-covidRA$time_symptom_confirmation <- discretize(covidRA$time_symptom_confirmation, breaks = 4)
-```
+covid$time_symptom_confirmation <- abs(as.numeric(covid$time_symptom_confirmation))
 
-* `time_symptom_hospital`: tiempo desde que se observan los síntomas hasta que se hospitaliza.
-```{r, warning = FALSE, message = FALSE}
-covidRA <- covidRA %>%
+
+# TIEMPO DESDE DETECCION DE SINTOMAS HASTA HOSPITALIZACION
+covid <- covid %>%
   mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
-covidRA$time_symptom_hospital <- abs(as.numeric(covidRA$time_symptom_hospital))
-covidRA <- covidRA %>% filter(time_symptom_hospital != outliers::outlier(time_symptom_hospital))
-covidRA$time_symptom_hospital <- discretize(covidRA$time_symptom_hospital, breaks = 4)
-```
+covid$time_symptom_hospital <- abs(as.numeric(covid$time_symptom_hospital))
 
-* `time_symptom_death`: tiempo desde que se observan los síntomas hasta que muere.
-```{r, warning = FALSE, message = FALSE}
-covidRA <- covidRA %>%
+
+# TIEMPO DESDE DETECCION DE SINTOMAS HASTA MUERTE
+covid <- covid %>%
   mutate(time_symptom_death = difftime(date_death_or_discharge, date_onset_symptoms, units = "days")) 
-covidRA$time_symptom_death <- abs(as.numeric(covidRA$time_symptom_death))
-covidRA <- covidRA %>% filter(time_symptom_death != outliers::outlier(time_symptom_death))
-covidRA$time_symptom_death <- discretize(covidRA$time_symptom_death, breaks = 4)
+covid$time_symptom_death <- abs(as.numeric(covid$time_symptom_death))
 
-```
-
-* `time_comfirmation_death`: tiempo desde que se observan los síntomas hasta que muere.
-```{r time symptom hospital, warning = FALSE, message = FALSE}
-covidRA <- covidRA %>%
+# TIEMPO DESDE CONFIRMACION HASTA MUERTE
+covid <- covid %>%
   mutate(time_comfirmation_death = difftime(date_death_or_discharge, date_confirmation, units = "days"))
-covidRA$time_comfirmation_death <- abs(as.numeric(covidRA$time_comfirmation_death))
-covidRA <- covidRA %>% filter(time_comfirmation_death != outliers::outlier(time_comfirmation_death))
-covidRA$time_comfirmation_death <- discretize(covidRA$time_comfirmation_death, breaks = 4)
+covid$time_comfirmation_death <- abs(as.numeric(covid$time_comfirmation_death))
 ```
 
 
-Y una vez limpiado el dataframe se nos queda así.
-```{r, warning = FALSE, message = FALSE}
-covidRA <- covidRA %>% select(-c(date_onset_symptoms, date_admission_hospital, date_confirmation, date_death_or_discharge, symptoms))
-colnames(covidRA)
-```
+## Minado de reglas de asociación
+No se ha podido aplicar el algoritmo `apriori` por la gran falta de datos.
 
-## Minado
 
-Vamos a intentar conocer qué condiciones deben darse para que se den algunos de los `outcome`s que presentan los enfermos. Estos son:
+## Visualización
+
 ```{r}
-summary(covidRA$outcome)
+covid %>%
+  select(age, outcome) %>%
+  ggplot(aes(x))
 ```
-No hemos hecho filtrado de aquellos valores que no son *death, discharge, severe, o estable*.
 
-* `outcome=death` y edad:
 
-```{r, warning = FALSE, message = FALSE}
-# pasamos el dataframe a objeto "transactions"
-covidRA <- as(covidRA, "transactions")
 
-# creamos una "regla" que nos coja todas las reglas que contengan solo edades
-edad <- grep("^age=", itemLabels(covidRA), value =TRUE)
-
-rules <- apriori(covidRA,
-                 parameter = list(minlen = 3, maxlen = 3, supp = 0.001, confidence = 0.6),
-                 appearance = list(rhs =c("outcome=death"), lhs = edad))
-inspect(head(sort(rules, by = "confidence")))
-plot(head(sort(rules, by = "confidence")), method = "graph")
-
-```
