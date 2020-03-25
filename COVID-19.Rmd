@@ -1,5 +1,5 @@
 ---
-title: "COVID-19 - Análisis"
+title: "COVID-19"
 author: "Juan Diego Martínez y Fco. Aguilera"
 date: "22/3/2020"
 output: html_document
@@ -56,6 +56,9 @@ covid$date_admission_hospital <- dmy(covid$date_admission_hospital)
 #DATE_CONFIRMATION
 covid$date_confirmation <- dmy(covid$date_confirmation)
 
+#DATE_DEATH_OR_DISCHARGE
+covid$date_death_or_discharge <- dmy(covid$date_death_or_discharge)
+
 #LIVES_IN_WUHAN <- se renombra STAYED_WUHAN (si vive o ha visitado wuhan recientemente)
 covid <- covid %>% rename(stayed_wuhan = lives_in_Wuhan)
 covid$stayed_wuhan <- tolower(covid$stayed_wuhan)
@@ -90,7 +93,7 @@ library(arulesViz)
 
 # Selección de columnas
 covidRA <- covid %>%
-  select(age, sex, date_onset_symptoms, date_admission_hospital, date_confirmation, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge, outcome)
+  select(age, sex, date_onset_symptoms, date_admission_hospital, date_confirmation, symptoms, stayed_wuhan, reported_market_exposure, chronic_disease_binary, date_death_or_discharge, outcome)
 ```
 
 ## Limpieza y preparación
@@ -100,22 +103,75 @@ Para el uso del algoritmo `apriori` necesitamos discretizar los valores. Como el
 covidRA$age <- discretize(covidRA$age, breaks = 7)
 covidRA$reported_market_exposure <- as.factor(covidRA$reported_market_exposure)
 covidRA$stayed_wuhan <- as.factor(covidRA$stayed_wuhan)
-covidRA <- covidRA %>%
-  select(-c(date_onset_symptoms, date_admission_hospital, date_confirmation,
-            date_death_or_discharge))
+covidRA$outcome <- as.factor(covidRA$outcome)
+covidRA <- covidRA %>% rename("chronic_disease" = "chronic_disease_binary")
 ```
+
+A partir de la columna `symptoms`, sacamos columnas binarias como `cough`, `fever`, `pneumonia`, etc, y algunas contando el número de días que tardan los enfermos en ingresar, morir, etc.
+```{r sintomas, warning=FALSE, message=FALSE}
+covidRA <- covidRA %>%
+  mutate(pneumonia = ifelse(grepl("pneumonia", symptoms), "yes", "no")) %>%
+  mutate(fever = ifelse(grepl("fever", symptoms), "yes", "no")) %>%
+  mutate(cough = ifelse(grepl("cough", symptoms), "yes", "no")) %>%
+  mutate(vomit = ifelse(grepl("vomit", symptoms), "yes", "no")) %>%
+  mutate(malaise = ifelse(grepl("malaise", symptoms), "yes", "no")) %>%
+  mutate(phlegm = ifelse(grepl("phlegm", symptoms), "yes", "no")) %>%
+  mutate(dyspnea = ifelse(grepl("dyspnea", symptoms), "yes", "no")) %>%
+  mutate(nausea = ifelse(grepl("nausea", symptoms), "yes", "no")) %>%
+  mutate(diarrhea = ifelse(grepl("diarrhea", symptoms), "yes", "no")) %>%
+  mutate(abd_pain = ifelse(grepl("abdominal", symptoms), "yes", "no")) %>%
+  mutate(myalgia = ifelse(grepl("myalgia", symptoms), "yes", "no")) %>%
+  mutate(breath_shortness = ifelse(grepl("shortness", symptoms), "yes", "no")) %>%
+  mutate(muscular = ifelse(grepl("musc", symptoms), "yes", "no")) %>%
+  mutate(fatigue = ifelse(grepl("fatigue", symptoms), "yes", "no"))
+```
+
+* `time_symptom_confirmation`: tiempo desde que se observan los síntomas hasta que se confirma el contagio.
+
+```{r, warning = FALSE, message = FALSE}
+covidRA <- covidRA %>%
+  mutate(time_symptom_confirmation = difftime(date_confirmation, date_onset_symptoms, units = "days"))
+```
+
+* `time_symptom_hospital`: tiempo desde que se observan los síntomas hasta que se hospitaliza.
+```{r, warning = FALSE, message = FALSE}
+covidRA <- covidRA %>%
+  mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
+```
+
+* `time_symptom_death`: tiempo desde que se observan los síntomas hasta que muere.
+```{r, warning = FALSE, message = FALSE}
+covidRA <- covidRA %>%
+  mutate(time_symptom_death = difftime(date_death_or_discharge, date_onset_symptoms, units = "days"))
+```
+
+* `time_comfirmation_death`: tiempo desde que se observan los síntomas hasta que muere.
+```{r time symptom hospital, warning = FALSE, message = FALSE}
+covidRA <- covidRA %>%
+  mutate(time_comfirmation_death = difftime(date_death_or_discharge, date_confirmation, units = "days"))
+```
+
 
 Y una vez limpiado el dataframe se nos queda así.
 ```{r, warning = FALSE, message = FALSE}
+covidRA <- covidRA %>% select(-c(date_onset_symptoms, date_admission_hospital, date_confirmation, date_death_or_discharge, symptoms))
 colnames(covidRA)
 ```
 
 ## Minado
 
+Vamos a intentar conocer qué condiciones deben darse para que se den algunos de los `outcome`s que presentan los enfermos. Estos son:
+```{r}
+summary(covidRA$outcome)
+```
+No hemos hecho filtrado de aquellos valores que no son *death, discharge, severe, o estable*.
+
+* `outcome=death`:
+
 ```{r, warning = FALSE, message = FALSE}
 rules <- apriori(covidRA,
-                 parameter = list(supp = 0.0001, confidence = 0.25),
-                 appearance = list(rhs =c("outcome=discharge"), default = "lhs"))
+                 parameter = list(minlen = 3, maxlen = 5, supp = 0.0001, confidence = 0.6),
+                 appearance = list(rhs =c("outcome=death"), default = "lhs"))
+inspect(head(sort(rules, by = "confidence")))
 
 ```
-
