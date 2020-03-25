@@ -131,24 +131,37 @@ covidRA <- covidRA %>%
 ```{r, warning = FALSE, message = FALSE}
 covidRA <- covidRA %>%
   mutate(time_symptom_confirmation = difftime(date_confirmation, date_onset_symptoms, units = "days"))
+covidRA$time_symptom_confirmation <- abs(as.numeric(covidRA$time_symptom_confirmation))
+covidRA <- covidRA %>% filter(time_symptom_confirmation != outliers::outlier(time_symptom_confirmation))
+covidRA$time_symptom_confirmation <- discretize(covidRA$time_symptom_confirmation, breaks = 4)
 ```
 
 * `time_symptom_hospital`: tiempo desde que se observan los síntomas hasta que se hospitaliza.
 ```{r, warning = FALSE, message = FALSE}
 covidRA <- covidRA %>%
   mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
+covidRA$time_symptom_hospital <- abs(as.numeric(covidRA$time_symptom_hospital))
+covidRA <- covidRA %>% filter(time_symptom_hospital != outliers::outlier(time_symptom_hospital))
+covidRA$time_symptom_hospital <- discretize(covidRA$time_symptom_hospital, breaks = 4)
 ```
 
 * `time_symptom_death`: tiempo desde que se observan los síntomas hasta que muere.
 ```{r, warning = FALSE, message = FALSE}
 covidRA <- covidRA %>%
-  mutate(time_symptom_death = difftime(date_death_or_discharge, date_onset_symptoms, units = "days"))
+  mutate(time_symptom_death = difftime(date_death_or_discharge, date_onset_symptoms, units = "days")) 
+covidRA$time_symptom_death <- abs(as.numeric(covidRA$time_symptom_death))
+covidRA <- covidRA %>% filter(time_symptom_death != outliers::outlier(time_symptom_death))
+covidRA$time_symptom_death <- discretize(covidRA$time_symptom_death, breaks = 4)
+
 ```
 
 * `time_comfirmation_death`: tiempo desde que se observan los síntomas hasta que muere.
 ```{r time symptom hospital, warning = FALSE, message = FALSE}
 covidRA <- covidRA %>%
   mutate(time_comfirmation_death = difftime(date_death_or_discharge, date_confirmation, units = "days"))
+covidRA$time_comfirmation_death <- abs(as.numeric(covidRA$time_comfirmation_death))
+covidRA <- covidRA %>% filter(time_comfirmation_death != outliers::outlier(time_comfirmation_death))
+covidRA$time_comfirmation_death <- discretize(covidRA$time_comfirmation_death, breaks = 4)
 ```
 
 
@@ -166,12 +179,19 @@ summary(covidRA$outcome)
 ```
 No hemos hecho filtrado de aquellos valores que no son *death, discharge, severe, o estable*.
 
-* `outcome=death`:
+* `outcome=death` y edad:
 
 ```{r, warning = FALSE, message = FALSE}
+# pasamos el dataframe a objeto "transactions"
+covidRA <- as(covidRA, "transactions")
+
+# creamos una "regla" que nos coja todas las reglas que contengan solo edades
+edad <- grep("^age=", itemLabels(covidRA), value =TRUE)
+
 rules <- apriori(covidRA,
-                 parameter = list(minlen = 3, maxlen = 5, supp = 0.0001, confidence = 0.6),
-                 appearance = list(rhs =c("outcome=death"), default = "lhs"))
+                 parameter = list(minlen = 3, maxlen = 3, supp = 0.001, confidence = 0.6),
+                 appearance = list(rhs =c("outcome=death"), lhs = edad))
 inspect(head(sort(rules, by = "confidence")))
+plot(head(sort(rules, by = "confidence")), method = "graph")
 
 ```
