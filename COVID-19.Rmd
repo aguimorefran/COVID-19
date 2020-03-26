@@ -23,6 +23,7 @@ library(stringr)
 library(magrittr)
 library(lubridate)
 library(ggplot2)
+theme_set(theme_bw())
 
 #Función que extrae los números de un string
 numextract <- function(string){
@@ -134,11 +135,30 @@ No se ha podido aplicar el algoritmo `apriori` por la gran falta de datos.
 
 ## Visualización
 
-```{r}
-covid %>%
-  select(age, outcome) %>%
-  ggplot(aes(x))
+```{r, warning= FALSE, message=FALSE, fig.align="center"}
+# agrupamos por edad
+x <- covid
+x$age <- abs(x$age)
+x$age <- cut(x$age, breaks = 5)
+x %>%
+  select(age, outcome, country) %>%
+  filter(outcome %in% c("death", "discharge", "severe", "stable")) %>%
+  filter(!is.na(age)) %>%
+  ggplot(aes(x=age, y=outcome)) + 
+  geom_count(aes(color=desc(..n..)), show.legend = F) + 
+  facet_wrap(~country) + 
+  xlab("Edad") + ylab("Resultado clínico") + 
+  ggtitle("Edad vs resultado clínico por país") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
+```{r fechas sintomas}
+
+x <- covid
+x %>%
+  select(date_onset_symptoms, country) %>%
+  count(date_onset_symptoms) %>%
+  # cumsum() de cada dia
+```
 
 
