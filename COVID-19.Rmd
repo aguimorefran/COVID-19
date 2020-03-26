@@ -5,11 +5,6 @@ date: "22/3/2020"
 output: html_document
 ---
 
-# Vista mundial
-## Importación y preparación
-### DATASETS
-https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, actualizado hasta el día 20/03/2020.
-
 Librerías:
 
 * *tidyverse* y *magritr* para manipulación.
@@ -24,12 +19,16 @@ library(magrittr)
 library(lubridate)
 library(ggplot2)
 theme_set(theme_bw())
+```
 
-#Función que extrae los números de un string
-numextract <- function(string){
-  unlist(regmatches(string,gregexpr("[[:digit:]]+\\.*[[:digit:]]*",string)))
-} #end of func
+# Vista mundial
+## Importación y preparación
+### DATASETS
+**MUY INCOMPLETO (no usarse para series temporales)** https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, actualizado hasta el día 20/03/2020. 
 
+
+
+```{r}
 # DESCARGADO EL 20 DE MARZO
 covid <- read_csv("covid/COVID19_open_line_list.csv")
 colnames(covid)
@@ -90,20 +89,20 @@ covid$outcome <- as.factor(covid$outcome)
 
 #CREAMOS COLUMNAS BINARIAS CON CADA SINTOMA
 covid <- covid %>%
-  mutate(pneumonia = ifelse(grepl("pneumonia", symptoms), "yes", "no")) %>%
-  mutate(fever = ifelse(grepl("fever", symptoms), "yes", "no")) %>%
-  mutate(cough = ifelse(grepl("cough", symptoms), "yes", "no")) %>%
-  mutate(vomit = ifelse(grepl("vomit", symptoms), "yes", "no")) %>%
-  mutate(malaise = ifelse(grepl("malaise", symptoms), "yes", "no")) %>%
-  mutate(phlegm = ifelse(grepl("phlegm", symptoms), "yes", "no")) %>%
-  mutate(dyspnea = ifelse(grepl("dyspnea", symptoms), "yes", "no")) %>%
-  mutate(nausea = ifelse(grepl("nausea", symptoms), "yes", "no")) %>%
-  mutate(diarrhea = ifelse(grepl("diarrhea", symptoms), "yes", "no")) %>%
-  mutate(abd_pain = ifelse(grepl("abdominal", symptoms), "yes", "no")) %>%
-  mutate(myalgia = ifelse(grepl("myalgia", symptoms), "yes", "no")) %>%
-  mutate(breath_shortness = ifelse(grepl("shortness", symptoms), "yes", "no")) %>%
-  mutate(muscular = ifelse(grepl("musc", symptoms), "yes", "no")) %>%
-  mutate(fatigue = ifelse(grepl("fatigue", symptoms), "yes", "no"))
+  mutate(pneumonia = ifelse(grepl("pneumonia", symptoms), TRUE,FALSE)) %>%
+  mutate(fever = ifelse(grepl("fever", symptoms), TRUE,FALSE)) %>%
+  mutate(cough = ifelse(grepl("cough", symptoms), TRUE,FALSE)) %>%
+  mutate(vomit = ifelse(grepl("vomit", symptoms), TRUE, FALSE)) %>%
+  mutate(malaise = ifelse(grepl("malaise", symptoms), TRUE, FALSE)) %>%
+  mutate(phlegm = ifelse(grepl("phlegm", symptoms), TRUE, FALSE)) %>%
+  mutate(dyspnea = ifelse(grepl("dyspnea", symptoms), TRUE, FALSE)) %>%
+  mutate(nausea = ifelse(grepl("nausea", symptoms), TRUE, FALSE)) %>%
+  mutate(diarrhea = ifelse(grepl("diarrhea", symptoms), TRUE, FALSE)) %>%
+  mutate(abd_pain = ifelse(grepl("abdominal", symptoms), TRUE, FALSE)) %>%
+  mutate(myalgia = ifelse(grepl("myalgia", symptoms), TRUE, FALSE)) %>%
+  mutate(breath_shortness = ifelse(grepl("shortness", symptoms), TRUE, FALSE)) %>%
+  mutate(muscular = ifelse(grepl("musc", symptoms), TRUE, FALSE)) %>%
+  mutate(fatigue = ifelse(grepl("fatigue", symptoms), TRUE, FALSE))
 
 # TIEMPO DESDE DETECCION DE SINTOMAS HASTA CONFIRMACION
 covid <- covid %>%
@@ -152,13 +151,19 @@ x %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-```{r fechas sintomas}
-
-x <- covid
+```{r sintomas, warning = FALSE, message = FALSE, fig.align="center"}
+x <- covid %>%
+  select(46:59) %>% #cojo las columnas de los sintomas
+  summarise_all(sum) %>%
+  t() %>% as.data.frame() %>%
+  rename("casos" = "V1")
+x$sintoma <- rownames(x)
 x %>%
-  select(date_onset_symptoms, country) %>%
-  count(date_onset_symptoms) %>%
-  # cumsum() de cada dia
+  ggplot(aes(y=casos, x = reorder(sintoma, casos))) + 
+  geom_histogram(stat = "identity", fill = "steelblue") + 
+  coord_flip() + 
+  ggtitle("Número de casos por cada síntoma") + 
+  xlab("Síntomas") + ylab("# casos")
 ```
 
 
