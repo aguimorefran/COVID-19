@@ -18,13 +18,18 @@ library(stringr)
 library(magrittr)
 library(lubridate)
 library(ggplot2)
+library(arules)
 theme_set(theme_bw())
 ```
 
 # Vista mundial
 ## Importación y preparación
 ### DATASETS
-**MUY INCOMPLETO (no usarse para series temporales)** https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, actualizado hasta el día 20/03/2020. 
+**MUY INCOMPLETO** 
+
+* **Casos personales, edad, síntomas, fechas de muerte, etc.**: https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, (actualizado hasta el día 20/03/2020). 
+
+* **Casos confirmados por país**: https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv
 
 
 
@@ -163,7 +168,27 @@ x %>%
   geom_histogram(stat = "identity", fill = "steelblue") + 
   coord_flip() + 
   ggtitle("Número de casos por cada síntoma") + 
-  xlab("Síntomas") + ylab("# casos")
+  xlab("síntomas") + ylab("# casos")
 ```
 
+```{r dias sintoma muerte, warning = FALSE, message = FALSE, fig.align="center"}
+x <- covid
+x$age <- discretize(x$age, breaks = 6)
+x$time_symptom_death <- discretize(x$time_symptom_death, breaks = 4)
+x %>%
+  select(age, time_symptom_death) %>%
+  group_by(age, time_symptom_death) %>%
+  count() %>%
+  na.omit() %>%
+  summarise(casos = sum(n)) %>%
+  ggplot(aes(x = time_symptom_death, y = casos, fill = age)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(~age) +
+  theme(legend.position="bottom") + 
+  xlab("Días") + 
+  ylab("# casos") + 
+  labs(fill = "Edad") + 
+  ggtitle("Días desde detección de síntomas hasta muerte por edad")
+  
+```
 
