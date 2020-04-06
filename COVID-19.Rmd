@@ -21,23 +21,28 @@ library(ggplot2)
 library(arules)
 theme_set(theme_bw())
 ```
+# Importación
 
-# Vista mundial
-## Importación y preparación
-### DATASETS
-**MUY INCOMPLETO** 
+* **Datos demográficos (muy incompleto)**: https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, (actualizado hasta el día 20/03/2020). 
 
-* **Casos personales, edad, síntomas, fechas de muerte, etc.**: https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, (actualizado hasta el día 20/03/2020). 
-
-* **Casos confirmados por país**: https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv
-
-
-
-```{r}
+```{r, message = FALSE, warning = FALSE}
 # DESCARGADO EL 20 DE MARZO
 covid <- read_csv("covid/COVID19_open_line_list.csv")
-colnames(covid)
 ```
+
+* **Infectados, muertos y recuperados globálmente**:
+https://github.com/CSSEGISandData/COVID-19
+
+```{r,  message = FALSE, warning = FALSE}
+# DESCARGADO EL 6 DE ABRIL
+cc <- read_csv("covid/time_series_covid19_confirmed_global.csv") #confirmados
+rr <- read_csv("covid/time_series_covid19_recovered_global.csv") #recuperados
+mm <- read_csv("covid/time_series_covid19_deaths_global.csv") #muertos
+```
+
+# Vista mundial
+
+## Datos demográficos
 
 ### Limpieza y adición de columnas
 ```{r limpieza, warning = FALSE, message = FALSE}
@@ -133,11 +138,11 @@ covid$time_comfirmation_death <- abs(as.numeric(covid$time_comfirmation_death))
 ```
 
 
-## Minado de reglas de asociación
+### Minado de reglas de asociación
 No se ha podido aplicar el algoritmo `apriori` por la gran falta de datos.
 
 
-## Visualización
+### Visualización
 
 ```{r, warning= FALSE, message=FALSE, fig.align="center"}
 # agrupamos por edad
@@ -167,8 +172,8 @@ x %>%
   ggplot(aes(y=casos, x = reorder(sintoma, casos))) + 
   geom_histogram(stat = "identity", fill = "steelblue") + 
   coord_flip() + 
-  ggtitle("Número de casos por cada síntoma") + 
-  xlab("síntomas") + ylab("# casos")
+  ggtitle("Número de casos vs síntoma") + 
+  xlab("síntoma") + ylab("# casos")
 ```
 
 ```{r dias sintoma muerte, warning = FALSE, message = FALSE, fig.align="center"}
@@ -190,5 +195,16 @@ x %>%
   labs(fill = "Edad") + 
   ggtitle("Días desde detección de síntomas hasta muerte por edad")
   
+```
+
+
+## Confirmados, recuperados y fallecidos
+
+```{r pais hist, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center"}
+# hacemos un cumsum de todos los confirmados globalmente
+conf <- cc %>%
+  select(-c("Lat", "Long", "Province/State", "Country/Region")) %>%
+  summarise_all(sum)
+
 ```
 
