@@ -23,18 +23,16 @@ theme_set(theme_bw())
 ```
 # Importación
 
-* **Datos demográficos (muy incompleto)**: https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, (actualizado hasta el día 20/03/2020). 
+* **Datos demográficos (muy incompleto) - actualizado 20/03**: https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, (actualizado hasta el día 20/03/2020). 
 
 ```{r, message = FALSE, warning = FALSE}
-# DESCARGADO EL 20 DE MARZO
 covid <- read_csv("covid/COVID19_open_line_list.csv")
 ```
 
-* **Infectados, muertos y recuperados globálmente**:
-https://github.com/CSSEGISandData/COVID-19
+* **Infectados, muertos y recuperados globálmente - actualizado 7/04**:
+https://data.humdata.org/dataset/novel-coronavirus-2019-ncov-cases
 
 ```{r,  message = FALSE, warning = FALSE}
-# DESCARGADO EL 6 DE ABRIL
 cc <- read_csv("covid/time_series_covid19_confirmed_global.csv") #confirmados
 rr <- read_csv("covid/time_series_covid19_recovered_global.csv") #recuperados
 mm <- read_csv("covid/time_series_covid19_deaths_global.csv") #muertos
@@ -154,7 +152,7 @@ x %>%
   filter(outcome %in% c("death", "discharge", "severe", "stable")) %>%
   filter(!is.na(age)) %>%
   ggplot(aes(x=age, y=outcome)) + 
-  geom_count(aes(color=desc(..n..)), show.legend = F) + 
+  geom_count(show.legend = F, color = "tomato3") + 
   facet_wrap(~country) + 
   xlab("Edad") + ylab("Resultado clínico") + 
   ggtitle("Edad vs resultado clínico por país") + 
@@ -170,7 +168,7 @@ x <- covid %>%
 x$sintoma <- rownames(x)
 x %>%
   ggplot(aes(y=casos, x = reorder(sintoma, casos))) + 
-  geom_histogram(stat = "identity", fill = "steelblue") + 
+  geom_histogram(stat = "identity", fill = "tomato3", width = .75) + 
   coord_flip() + 
   ggtitle("Número de casos vs síntoma") + 
   xlab("síntoma") + ylab("# casos")
@@ -180,14 +178,17 @@ x %>%
 x <- covid
 x$age <- discretize(x$age, breaks = 6)
 x$time_symptom_death <- discretize(x$time_symptom_death, breaks = 4)
+x <- x %>%
+  filter(!is.na(age))
+x$age <- paste(x$age, " años")
 x %>%
   select(age, time_symptom_death) %>%
   group_by(age, time_symptom_death) %>%
   count() %>%
   na.omit() %>%
   summarise(casos = sum(n)) %>%
-  ggplot(aes(x = time_symptom_death, y = casos, fill = age)) + 
-  geom_bar(stat = "identity") + 
+  ggplot(aes(x = time_symptom_death, y = casos)) + 
+  geom_bar(stat = "identity", fill = "tomato3", width = 0.75) + 
   facet_wrap(~age) +
   theme(legend.position="bottom") + 
   xlab("Días") + 
@@ -200,11 +201,55 @@ x %>%
 
 ## Confirmados, recuperados y fallecidos
 
-```{r pais hist, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center"}
-# hacemos un cumsum de todos los confirmados globalmente
-conf <- cc %>%
-  select(-c("Lat", "Long", "Province/State", "Country/Region")) %>%
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center", fig.height=5, fig.width=5}
+# total casos diarios
+x <- cc %>%
+  select(-c("Long", "Lat", "Country/Region", "Province/State")) %>%
   summarise_all(sum)
+
+dia <- mdy(colnames(x))
+confirmados <- as.numeric(x)
+nuevosmundo <- data.frame(dia, confirmados)
+
+# total recuperados
+x <- rr %>%
+  select(-c("Long", "Lat", "Country/Region", "Province/State")) %>%
+  summarise_all(sum)
+
+recuperados <- as.numeric(x)
+nuevosmundo$recuperados <- recuperados
+
+# total muertos
+x <- mm %>%
+  select(-c("Long", "Lat", "Country/Region", "Province/State")) %>%
+  summarise_all(sum)
+
+muertos <- as.numeric(x)
+nuevosmundo$muertos <- muertos
+
+# saco maximos de confirmados, muertos y recuperados
+#conf
+picoconf <- nuevosmundo %>%
+  select(dia, confirmados) %>%
+  filter(confirmados == max(confirmados, na.rm = T))
+ssconf <- paste(picoconf$confirmados, " - ", picoconf$dia)
+
+ggplot(nuevosmundo, aes(x=dia)) + 
+  geom_area(aes(y=confirmados/1000, fill="confirmados"), color = "black") +
+  geom_area(aes(y=recuperados/1000, fill="recuperados"), color = "black") + 
+  geom_area(aes(y=muertos/1000, fill="muertos"), color = "black") + 
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  ylab("casos (x1000)") + xlab("fecha") + 
+  theme(legend.position="bottom") + 
+  theme(legend.title = element_blank()) + 
+  ggtitle("Casos totales de Covid-19")
+
+
+```
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center"}
+
 
 ```
 
