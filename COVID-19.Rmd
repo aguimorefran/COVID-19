@@ -19,6 +19,7 @@ library(magrittr)
 library(lubridate)
 library(ggplot2)
 library(arules)
+require(gridExtra)
 theme_set(theme_bw())
 ```
 # Importación
@@ -201,8 +202,8 @@ x %>%
 
 ## Confirmados, recuperados y fallecidos
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center", fig.height=5, fig.width=5}
-# total casos diarios
+```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center", fig.height=15, fig.width=10}
+# total casos confirmados
 x <- cc %>%
   select(-c("Long", "Lat", "Country/Region", "Province/State")) %>%
   summarise_all(sum)
@@ -210,6 +211,8 @@ x <- cc %>%
 dia <- mdy(colnames(x))
 confirmados <- as.numeric(x)
 nuevosmundo <- data.frame(dia, confirmados)
+
+
 
 # total recuperados
 x <- rr %>%
@@ -227,23 +230,66 @@ x <- mm %>%
 muertos <- as.numeric(x)
 nuevosmundo$muertos <- muertos
 
+# total casos activos (confirmados - muertos - recuperados)
+activos <- confirmados - recuperados - muertos
+nuevosmundo$activos <- activos
+
 # saco maximos de confirmados, muertos y recuperados
-#conf
+#activos
+picoactivos <- nuevosmundo %>%
+  select(dia, activos) %>%
+  filter(activos == max(activos, na.rm = T))
+labelactivos <- paste(picoactivos$activos, " - ", picoactivos$dia)
+
+#curados
+picorecuperados <- nuevosmundo %>%
+  select(dia, recuperados) %>%
+  filter(recuperados == max(recuperados, na.rm = T))
+labelrecuperados <- paste(picorecuperados$recuperados, " - ", picorecuperados$dia)
+
+#muertos
+picomuertos <- nuevosmundo %>%
+  select(dia, muertos) %>%
+  filter(muertos == max(muertos, na.rm = T))
+labelmuertos <- paste(picomuertos$muertos, " - ", picomuertos$dia)
+
+#confirmados
 picoconf <- nuevosmundo %>%
   select(dia, confirmados) %>%
   filter(confirmados == max(confirmados, na.rm = T))
-ssconf <- paste(picoconf$confirmados, " - ", picoconf$dia)
+labelconf <- paste(picoconf$confirmados, " - ", picoconf$dia)
 
-ggplot(nuevosmundo, aes(x=dia)) + 
-  geom_area(aes(y=confirmados/1000, fill="confirmados"), color = "black") +
-  geom_area(aes(y=recuperados/1000, fill="recuperados"), color = "black") + 
-  geom_area(aes(y=muertos/1000, fill="muertos"), color = "black") + 
+
+p1 <- ggplot(nuevosmundo, aes(x=dia)) + 
+  geom_area(aes(y=(activos)/1000, fill="activos"), alpha = 0.2) +
+  geom_area(aes(y=(recuperados)/1000, fill="recuperados"), alpha = 0.2) + 
+  geom_area(aes(y=muertos/1000, fill="muertos"), alpha = 0.2) + 
+  geom_area(aes(y=confirmados/1000, fill = "confirmados"), alpha=0.2)+
   scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
   ylab("casos (x1000)") + xlab("fecha") + 
+  ggtitle("Casos totales de Covid-19 en el mundo") +
+  geom_line(aes(y=activos/1000, color = "activos"), size = 1.5) + 
+  geom_line(aes(y=confirmados/1000, color = "confirmados"), size = 1.5) + 
+  geom_line(aes(y=muertos/1000, color = "muertos"), size = 1.5) + 
+  geom_line(aes(y=recuperados/1000, color = "recuperados"), size = 1.5) +
+  geom_label(data = picoactivos, aes(y = activos/1000, x = dia, label = labelactivos), vjust = -.5)+ 
+  geom_label(data = picorecuperados, aes(y = recuperados/1000, x = dia, label = labelrecuperados), vjust = -.5)+ 
+  geom_label(data = picomuertos, aes(y = muertos/1000, x = dia, label = labelmuertos), vjust = -.5) + 
+  geom_label(data = picoconf, aes(y = confirmados/1000, x = dia, label = labelconf), vjust = -.5) + 
   theme(legend.position="bottom") + 
   theme(legend.title = element_blank()) + 
-  ggtitle("Casos totales de Covid-19")
+  guides(color=FALSE)
+  
 
+p2 <- ggplot(nuevosmundo, aes(x=dia, y=activos/1000)) + 
+  geom_line(color="tomato3", size=1) + 
+  geom_point(size=2, color="tomato3") +  
+  scale_y_continuous(trans = 'log10') + 
+  xlab("fecha") + ylab("activos (x1000)") + 
+  ggtitle("Casos totales de Covid-19 en el mundo")
+  
+             
+grid.arrange(p1,p2,ncol=1)
 
 ```
 
