@@ -286,7 +286,8 @@ p2 <- ggplot(nuevosmundo, aes(x=dia, y=activos/1000)) +
   geom_point(size=2, color="tomato3") +  
   scale_y_continuous(trans = 'log10') + 
   xlab("fecha") + ylab("activos (x1000)") + 
-  ggtitle("Casos totales de Covid-19 en el mundo")
+  ggtitle("Casos totales de Covid-19 en el mundo") +
+  labs(subtitle = "Escala logarítmica")
   
              
 grid.arrange(p1,p2,ncol=1)
@@ -294,8 +295,47 @@ grid.arrange(p1,p2,ncol=1)
 ```
 
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center"}
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+# rr, mm, cc dejamos solo datos, pais y añadimos total. tambien creamos otro df de casos activos restando muertos y enfermos a los confirmados. llamamos a este df aatotal
+cctotal <- cc %>%
+  select(-c("Long", "Lat", "Province/State")) %>%
+  rename("pais" = "Country/Region") %>%
+  group_by(pais) %>%
+  summarise_each(funs(sum))
 
+rrtotal <- rr %>%
+  select(-c("Long", "Lat", "Province/State")) %>%
+  rename("pais" = "Country/Region") %>%
+  group_by(pais) %>%
+  summarise_each(funs(sum))
+
+mmtotal <- mm %>%
+  select(-c("Long", "Lat", "Province/State")) %>%
+  rename("pais" = "Country/Region") %>%
+  group_by(pais) %>%
+  summarise_each(funs(sum))
+
+# creamos aatotal
+aatotal <- cctotal
+aatotal[2:ncol(aatotal)] <- rrtotal[2:ncol(rrtotal)] - mmtotal[2:ncol(mmtotal)]
+```
+
+```{r, echo = FALSE}
+# como tenemos el dataset en datos acumulados, usamos lag para restar a la pos i, el valor i-1, para que nos dé el aumento de cada dia
+ccdif <- cctotal[2:ncol(cctotal)] - lag(cctotal[2:ncol(cctotal)], 1)
+ccdif <- cbind(cctotal[1], cctotal)
+
+rrdif <- rrtotal[2:ncol(rrtotal)] - lag(rrtotal[2:ncol(rrtotal)], 1)
+rrdif <- cbind(rrtotal[1], rrtotal)
+
+mmdif <- mmtotal[2:ncol(mmtotal)] - lag(mmtotal[2:ncol(mmtotal)], 1)
+mmdif <- cbind(mmtotal[1], mmtotal)
+```
+
+```{r}
 
 ```
+
+
+
 
