@@ -26,6 +26,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.align = "center")
 
 
 ```{r}
+library(readr)
 library(tidyverse)
 library(lubridate)
 library(stringr)
@@ -40,9 +41,7 @@ theme_set(theme_bw())
 > "El director general de la Organización Mundial de la Salud (OMS), Tedros Adhanom Ghebreyesus, ha declarado este miércoles que el coronavirus Covid-19 pasa de ser una epidemia a una pandemia."
 
 ```{r}
-nacional <- read.csv("./datasets/nacional_covid19.csv")
-# problemas de importar, a veces coge mal el nombre de la columna
-nacional <- nacional %>% rename(fecha = "ï..fecha")
+nacional <- read_csv("./datasets/nacional_covid19.csv")
 nacional$fecha <- as.Date(nacional$fecha)
 ```
 
@@ -59,6 +58,7 @@ fase1 <- dmy("2/05/2020")
 fase2 <- dmy("18/05/2020")
 ```
 
+## Vista general
 
 * ¿Cuándo se superan los 1000 casos diarios? ¿Y los 100 fallecidos? 
 ```{r}
@@ -126,7 +126,22 @@ t <- nacional %>%
   ts(frequency = 7)
 plot(decompose(t))
 ```
+He creado una serie temporal de frecuencia 7 para observar la estacionalidad que vemos en la gráfica anterior.
 
 Podemos observar la tendencia exponencial al principio de la pandemia, y como poco a poco se van reduciendo los nuevos casos.
 Tambien observamos una estacionalidad de una semana. Esto podría darse por no acudir al hospital o médico o la no realización de tests los findes de semana.
+
+
+## Camas UCI
+
+```{r}
+# pacientes en UCI
+uci <- read_csv("datasets/ccaa_covid19_uci.csv")
+
+# camas UCI
+uci_camas <- read_csv("datasets/ccaa_camas_uci_2017.csv")
+
+# poblacion
+demo <- read_table2("datasets/poblacion.csv")
+```
 
