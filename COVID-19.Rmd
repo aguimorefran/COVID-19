@@ -40,8 +40,8 @@ theme_set(theme_bw())
 > "El director general de la Organización Mundial de la Salud (OMS), Tedros Adhanom Ghebreyesus, ha declarado este miércoles que el coronavirus Covid-19 pasa de ser una epidemia a una pandemia."
 
 ```{r}
-nacional <- read.csv("./datasets/nacional_covid19.csv", encoding = "UTF-8")
-nacional <- nacional %>% rename(fecha = "X.U.FEFF.fecha")
+nacional <- read.csv("./datasets/nacional_covid19.csv")
+nacional <- nacional %>% rename(fecha = "ï..fecha")
 nacional$fecha <- as.Date(nacional$fecha)
 ```
 
@@ -110,4 +110,3 @@ nacional %>%
   labs(title = "Casos de Covid-19 en España", subtitle = "Datos diarios de altas, nuevos confirmados, y fallecidos", caption = "Datos proporcionados por datadista")
 ```
 
-TEXT TESTttt
