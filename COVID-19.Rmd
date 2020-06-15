@@ -43,7 +43,9 @@ theme_set(theme_bw())
 ```{r}
 nacional <- read.csv("./datasets/nacional_covid19.csv")
 nacional <- nacional %>% rename(fecha = "ï..fecha")
+nacional$fecha <- as.Date(nacional$fecha)
 nacional %>% 
-  ggplot(aes(x = fecha, y = ))
+  ggplot(aes(x = fecha, y = fallecimientos)) + 
+  geom_line()
 ```
 
