@@ -41,6 +41,7 @@ theme_set(theme_bw())
 
 ```{r}
 nacional <- read.csv("./datasets/nacional_covid19.csv")
+# problemas de importar, a veces coge mal el nombre de la columna
 nacional <- nacional %>% rename(fecha = "ï..fecha")
 nacional$fecha <- as.Date(nacional$fecha)
 ```
@@ -94,6 +95,8 @@ nacional %>%
   
   geom_vline(aes(xintercept = fecha_1000_casos), linetype = "dashed", size = 1) + 
   geom_label(aes(x = fecha_1000_casos, y = +Inf, label = "1000 fallecidos diarios", vjust = 2)) +
+  
+  theme(legend.title = element_blank(), legend.position = "bottom") + 
   
   annotate("rect", xmin = fase0, xmax = fase1,
            ymin=0, ymax=Inf, fill = "blue", alpha = .1) +
