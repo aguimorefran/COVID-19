@@ -39,13 +39,74 @@ theme_set(theme_bw())
 
 > "El director general de la Organización Mundial de la Salud (OMS), Tedros Adhanom Ghebreyesus, ha declarado este miércoles que el coronavirus Covid-19 pasa de ser una epidemia a una pandemia."
 
-## Vista general
 ```{r}
-nacional <- read.csv("./datasets/nacional_covid19.csv")
-nacional <- nacional %>% rename(fecha = "ï..fecha")
+nacional <- read.csv("./datasets/nacional_covid19.csv", encoding = "UTF-8")
+nacional <- nacional %>% rename(fecha = "X.U.FEFF.fecha")
 nacional$fecha <- as.Date(nacional$fecha)
+```
+
+```{r}
+# fases de confinamiento y desescalada
+
+# fase 0 (confimaniento total)
+fase0 <- dmy("15/03/2020")
+
+# fase 1 (deporte y paseos de niños)
+fase1 <- dmy("2/05/2020")
+
+# desescalada (fase 2 en adelante. Englobo el resto de fases porque en todas se permite socializar)
+fase2 <- dmy("18/05/2020")
+```
+
+
+* ¿Cuándo se superan los 1000 casos diarios? ¿Y los 100 fallecidos? 
+```{r}
+# calculo los casos nuevos de infectados, hospitalizados y fallecidos
+nacional <- nacional %>% 
+  mutate(casos_nuevos = c(0, diff(casos_total)),
+         hospitalizados_nuevos = c(NA, diff(hospitalizados)),
+         fallecimientos_nuevos = c(0, diff(fallecimientos)),
+         altas_nuevas = c(NA, diff(altas)))
+
+fecha_1000_casos <- nacional %>% 
+  filter(casos_nuevos >= 1000) %>% 
+  select(fecha, casos_nuevos) %>% 
+  head(1) %>% 
+  first()
+fecha_1000_casos
+
+fecha_100_fallecimientos <- nacional %>% 
+  filter(fallecimientos_nuevos >= 100) %>% 
+  select(fecha, fallecimientos_nuevos) %>% 
+  head(1) %>% 
+  first()
+fecha_100_fallecimientos
+
+```
+
+
+```{r, fig.height=5, fig.width=10}
 nacional %>% 
-  ggplot(aes(x = fecha, y = fallecimientos)) + 
-  geom_line()
+  ggplot(aes(x = fecha)) + 
+  geom_line(aes(y=casos_nuevos, color = "confirmados"), size = 1.2) + 
+  geom_line(aes(y=fallecimientos_nuevos, color = "fallecidos"), size = 1.2) +
+  geom_line(aes(y=altas_nuevas, color = "altas médicas"), size = 1.2) +
+  
+  geom_vline(aes(xintercept = fecha_1000_casos), linetype = "dashed", size = 1) + 
+  geom_label(aes(x = fecha_1000_casos, y = +Inf, label = "1000 fallecidos diarios", vjust = 2)) +
+  
+  annotate("rect", xmin = fase0, xmax = fase1,
+           ymin=0, ymax=Inf, fill = "blue", alpha = .1) +
+  annotate("rect", xmin = fase1, xmax = fase2,
+           ymin=0, ymax=Inf, fill = "orange", alpha = .1) +
+  annotate("rect", xmin = fase2, xmax = max(nacional$fecha),
+           ymin=0, ymax=Inf, fill = "green", alpha = .1) +
+  
+  scale_fill_manual('Highlight this',
+                      values = 'pink',  
+                      guide = guide_legend(override.aes = list(alpha = 1))) +
+  
+  xlab("fecha") + ylab("casos") + 
+  labs(title = "Casos de Covid-19 en España", subtitle = "Datos diarios de altas, nuevos confirmados, y fallecidos", caption = "Datos proporcionados por datadista")
 ```
 
