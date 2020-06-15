@@ -87,6 +87,12 @@ fecha_100_fallecimientos
 
 
 ```{r, fig.height=5, fig.width=10}
+# dia con mas casos nuevos
+dia_max <- nacional %>% 
+  arrange(-casos_nuevos) %>% 
+  head(1) %>% 
+  select(fecha, casos_nuevos)
+
 nacional %>% 
   ggplot(aes(x = fecha)) + 
   geom_line(aes(y=casos_nuevos, color = "confirmados"), size = 1.2) + 
@@ -94,7 +100,7 @@ nacional %>%
   geom_line(aes(y=altas_nuevas, color = "altas médicas"), size = 1.2) +
   
   geom_vline(aes(xintercept = fecha_1000_casos), linetype = "dashed", size = 1) + 
-  geom_label(aes(x = fecha_1000_casos, y = +Inf, label = "1000 fallecidos diarios", vjust = 2)) +
+  geom_label(aes(x = fecha_1000_casos, y = +Inf, label = "1000 casos diarios", vjust = 5)) +
   
   theme(legend.title = element_blank(), legend.position = "bottom") + 
   
@@ -105,11 +111,22 @@ nacional %>%
   annotate("rect", xmin = fase2, xmax = max(nacional$fecha),
            ymin=0, ymax=Inf, fill = "green", alpha = .1) +
   
-  scale_fill_manual('Highlight this',
-                      values = 'pink',  
-                      guide = guide_legend(override.aes = list(alpha = 1))) +
+  geom_label(aes(x = dia_max$fecha, y = dia_max$casos_nuevos, label = paste(dia_max$fecha, "/", dia_max$casos_nuevos, "casos")), hjust = -.1) +
+ 
   
   xlab("fecha") + ylab("casos") + 
   labs(title = "Casos de Covid-19 en España", subtitle = "Datos diarios de altas, nuevos confirmados, y fallecidos", caption = "Datos proporcionados por datadista")
 ```
+
+```{r}
+# me quedo con los casos nuevos de cada dia
+t <- nacional %>% 
+  select(casos_nuevos) %>% 
+  na.omit() %>% 
+  ts(frequency = 7)
+plot(decompose(t))
+```
+
+Podemos observar la tendencia exponencial al principio de la pandemia, y como poco a poco se van reduciendo los nuevos casos.
+Tambien observamos una estacionalidad de una semana. Esto podría darse por no acudir al hospital o médico o la no realización de tests los findes de semana.
 
