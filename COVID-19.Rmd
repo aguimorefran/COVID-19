@@ -2,340 +2,48 @@
 title: "COVID-19"
 author: "Juan Diego Martínez y Fco. Aguilera"
 date: "22/3/2020"
-output: html_document
+output:
+  prettydoc::html_pretty:
+    theme: hpstr
+    highlight: github
 ---
 
-Librerías:
+# Librerías:
 
-* *tidyverse* y *magritr* para manipulación.
-* *stringr* para parsear los datos en bruto.
-* *lubridate* para trabajar con fechas.
-* *ggplot2* para visualización de datos.
+* **tidyverse** para manipulació y visualización.
+* **stringr** para parsear los datos en bruto.
+* **lubridate** para trabajar con fechas.
+* **ggplot2** para visualización de datos.
+* **arules** para reglas de asociación
 
-```{r imporacion, warning = FALSE, message = FALSE}
+# Datasets
+
+* **Datadista**: https://github.com/datadista/datasets
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.align = "center")
+```
+
+
+```{r}
 library(tidyverse)
-library(stringr)
-library(magrittr)
 library(lubridate)
-library(ggplot2)
+library(stringr)
 library(arules)
 require(gridExtra)
 theme_set(theme_bw())
 ```
-# Importación
-
-* **Datos demográficos (muy incompleto) - actualizado 20/03**: https://www.kaggle.com/sudalairajkumar/novel-corona-virus-2019-dataset/data#COVID19_open_line_list.csv, (actualizado hasta el día 20/03/2020). 
-
-```{r, message = FALSE, warning = FALSE}
-covid <- read_csv("covid/COVID19_open_line_list.csv")
-```
-
-* **Infectados, muertos y recuperados globálmente - actualizado 7/04**:
-https://data.humdata.org/dataset/novel-coronavirus-2019-ncov-cases
-
-```{r,  message = FALSE, warning = FALSE}
-cc <- read_csv("covid/time_series_covid19_confirmed_global.csv") #confirmados
-rr <- read_csv("covid/time_series_covid19_recovered_global.csv") #recuperados
-mm <- read_csv("covid/time_series_covid19_deaths_global.csv") #muertos
-```
-
-# Vista mundial
-
-## Datos demográficos
-
-### Limpieza y adición de columnas
-```{r limpieza, warning = FALSE, message = FALSE}
-covid[covid == "N/A"] <- NA
-
-#Age
-unique(covid$age)
-covid$age <- covid$age %>%
-  as.numeric()
-
-#Sex
-covid$sex <- tolower(covid$sex)
-covid$sex[covid$sex == 4000] <- NA
-covid$sex <- as.factor(covid$sex)
-#summary(factor((covid$sex)))
-
-#DATE_ONSET_SYMPTONS
-covid$date_onset_symptoms <- dmy(covid$date_onset_symptoms)
-
-#DATE_ADMISSION_HOSPITAL
-covid$date_admission_hospital <- dmy(covid$date_admission_hospital)
-
-#DATE_CONFIRMATION
-covid$date_confirmation <- dmy(covid$date_confirmation)
-
-#DATE_DEATH_OR_DISCHARGE
-covid$date_death_or_discharge <- dmy(covid$date_death_or_discharge)
-
-#LIVES_IN_WUHAN <- se renombra STAYED_WUHAN (si vive o ha visitado wuhan recientemente)
-covid <- covid %>% rename(stayed_wuhan = lives_in_Wuhan)
-covid$stayed_wuhan <- tolower(covid$stayed_wuhan)
-covid$stayed_wuhan[covid$stayed_wuhan == 0] <- "no"
-covid$stayed_wuhan[covid$stayed_wuhan %in% c(1, "yes")] <- "yes"
-covid$stayed_wuhan[covid$stayed_wuhan != "no"] <- "yes"
-covid$stayed_wuhan <- as.factor(covid$stayed_wuhan)
-#summary(covid$stayed_wuhan)
 
 
-#REPORTED_MARKET_EXPOSURE
-covid$reported_market_exposure[covid$reported_market_exposure == "working in another market in Wuhan"] = "yes"
-covid$reported_market_exposure <- as.factor(covid$reported_market_exposure)
-#summary(factor(covid$reported_market_exposure))
+# Situación en España
 
-#CHRONIC_DISEASE_BINARY
-covid$chronic_disease_binary <- as.factor(covid$chronic_disease_binary)
-#summary(factor(covid$chronic_disease))
+> "El director general de la Organización Mundial de la Salud (OMS), Tedros Adhanom Ghebreyesus, ha declarado este miércoles que el coronavirus Covid-19 pasa de ser una epidemia a una pandemia."
 
-
-#OUTCOME
-covid$outcome[covid$outcome %in% c("Discharged", "discharge", "discharged", "recovered")] <- "discharge"
-covid$outcome[covid$outcome == "died"] <- "death"
-covid$outcome <- as.factor(covid$outcome)
-#summary(covid$outcome)
-
-#CREAMOS COLUMNAS BINARIAS CON CADA SINTOMA
-covid <- covid %>%
-  mutate(pneumonia = ifelse(grepl("pneumonia", symptoms), TRUE,FALSE)) %>%
-  mutate(fever = ifelse(grepl("fever", symptoms), TRUE,FALSE)) %>%
-  mutate(cough = ifelse(grepl("cough", symptoms), TRUE,FALSE)) %>%
-  mutate(vomit = ifelse(grepl("vomit", symptoms), TRUE, FALSE)) %>%
-  mutate(malaise = ifelse(grepl("malaise", symptoms), TRUE, FALSE)) %>%
-  mutate(phlegm = ifelse(grepl("phlegm", symptoms), TRUE, FALSE)) %>%
-  mutate(dyspnea = ifelse(grepl("dyspnea", symptoms), TRUE, FALSE)) %>%
-  mutate(nausea = ifelse(grepl("nausea", symptoms), TRUE, FALSE)) %>%
-  mutate(diarrhea = ifelse(grepl("diarrhea", symptoms), TRUE, FALSE)) %>%
-  mutate(abd_pain = ifelse(grepl("abdominal", symptoms), TRUE, FALSE)) %>%
-  mutate(myalgia = ifelse(grepl("myalgia", symptoms), TRUE, FALSE)) %>%
-  mutate(breath_shortness = ifelse(grepl("shortness", symptoms), TRUE, FALSE)) %>%
-  mutate(muscular = ifelse(grepl("musc", symptoms), TRUE, FALSE)) %>%
-  mutate(fatigue = ifelse(grepl("fatigue", symptoms), TRUE, FALSE))
-
-# TIEMPO DESDE DETECCION DE SINTOMAS HASTA CONFIRMACION
-covid <- covid %>%
-  mutate(time_symptom_confirmation = difftime(date_confirmation, date_onset_symptoms, units = "days"))
-covid$time_symptom_confirmation <- abs(as.numeric(covid$time_symptom_confirmation))
-
-
-# TIEMPO DESDE DETECCION DE SINTOMAS HASTA HOSPITALIZACION
-covid <- covid %>%
-  mutate(time_symptom_hospital = difftime(date_admission_hospital, date_onset_symptoms, units = "days"))
-covid$time_symptom_hospital <- abs(as.numeric(covid$time_symptom_hospital))
-
-
-# TIEMPO DESDE DETECCION DE SINTOMAS HASTA MUERTE
-covid <- covid %>%
-  mutate(time_symptom_death = difftime(date_death_or_discharge, date_onset_symptoms, units = "days")) 
-covid$time_symptom_death <- abs(as.numeric(covid$time_symptom_death))
-
-# TIEMPO DESDE CONFIRMACION HASTA MUERTE
-covid <- covid %>%
-  mutate(time_comfirmation_death = difftime(date_death_or_discharge, date_confirmation, units = "days"))
-covid$time_comfirmation_death <- abs(as.numeric(covid$time_comfirmation_death))
-```
-
-
-### Minado de reglas de asociación
-No se ha podido aplicar el algoritmo `apriori` por la gran falta de datos.
-
-
-### Visualización
-
-```{r, warning= FALSE, message=FALSE, fig.align="center"}
-# agrupamos por edad
-x <- covid
-x$age <- abs(x$age)
-x$age <- cut(x$age, breaks = 5)
-x %>%
-  select(age, outcome, country) %>%
-  filter(outcome %in% c("death", "discharge", "severe", "stable")) %>%
-  filter(!is.na(age)) %>%
-  ggplot(aes(x=age, y=outcome)) + 
-  geom_count(show.legend = F, color = "tomato3") + 
-  facet_wrap(~country) + 
-  xlab("Edad") + ylab("Resultado clínico") + 
-  ggtitle("Edad vs resultado clínico por país") + 
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
-
-```{r sintomas, warning = FALSE, message = FALSE, fig.align="center"}
-x <- covid %>%
-  select(46:59) %>% #cojo las columnas de los sintomas
-  summarise_all(sum) %>%
-  t() %>% as.data.frame() %>%
-  rename("casos" = "V1")
-x$sintoma <- rownames(x)
-x %>%
-  ggplot(aes(y=casos, x = reorder(sintoma, casos))) + 
-  geom_histogram(stat = "identity", fill = "tomato3", width = .75) + 
-  coord_flip() + 
-  ggtitle("Número de casos vs síntoma") + 
-  xlab("síntoma") + ylab("# casos")
-```
-
-```{r dias sintoma muerte, warning = FALSE, message = FALSE, fig.align="center"}
-x <- covid
-x$age <- discretize(x$age, breaks = 6)
-x$time_symptom_death <- discretize(x$time_symptom_death, breaks = 4)
-x <- x %>%
-  filter(!is.na(age))
-x$age <- paste(x$age, " años")
-x %>%
-  select(age, time_symptom_death) %>%
-  group_by(age, time_symptom_death) %>%
-  count() %>%
-  na.omit() %>%
-  summarise(casos = sum(n)) %>%
-  ggplot(aes(x = time_symptom_death, y = casos)) + 
-  geom_bar(stat = "identity", fill = "tomato3", width = 0.75) + 
-  facet_wrap(~age) +
-  theme(legend.position="bottom") + 
-  xlab("Días") + 
-  ylab("# casos") + 
-  labs(fill = "Edad") + 
-  ggtitle("Días desde detección de síntomas hasta muerte por edad")
-  
-```
-
-
-## Confirmados, recuperados y fallecidos
-
-```{r, echo = FALSE, warning = FALSE, message = FALSE, fig.align="center", fig.height=15, fig.width=10}
-# total casos confirmados
-x <- cc %>%
-  select(-c("Long", "Lat", "Country/Region", "Province/State")) %>%
-  summarise_all(sum)
-
-dia <- mdy(colnames(x))
-confirmados <- as.numeric(x)
-nuevosmundo <- data.frame(dia, confirmados)
-
-
-
-# total recuperados
-x <- rr %>%
-  select(-c("Long", "Lat", "Country/Region", "Province/State")) %>%
-  summarise_all(sum)
-
-recuperados <- as.numeric(x)
-nuevosmundo$recuperados <- recuperados
-
-# total muertos
-x <- mm %>%
-  select(-c("Long", "Lat", "Country/Region", "Province/State")) %>%
-  summarise_all(sum)
-
-muertos <- as.numeric(x)
-nuevosmundo$muertos <- muertos
-
-# total casos activos (confirmados - muertos - recuperados)
-activos <- confirmados - recuperados - muertos
-nuevosmundo$activos <- activos
-
-# saco maximos de confirmados, muertos y recuperados
-#activos
-picoactivos <- nuevosmundo %>%
-  select(dia, activos) %>%
-  filter(activos == max(activos, na.rm = T))
-labelactivos <- paste(picoactivos$activos, " - ", picoactivos$dia)
-
-#curados
-picorecuperados <- nuevosmundo %>%
-  select(dia, recuperados) %>%
-  filter(recuperados == max(recuperados, na.rm = T))
-labelrecuperados <- paste(picorecuperados$recuperados, " - ", picorecuperados$dia)
-
-#muertos
-picomuertos <- nuevosmundo %>%
-  select(dia, muertos) %>%
-  filter(muertos == max(muertos, na.rm = T))
-labelmuertos <- paste(picomuertos$muertos, " - ", picomuertos$dia)
-
-#confirmados
-picoconf <- nuevosmundo %>%
-  select(dia, confirmados) %>%
-  filter(confirmados == max(confirmados, na.rm = T))
-labelconf <- paste(picoconf$confirmados, " - ", picoconf$dia)
-
-
-p1 <- ggplot(nuevosmundo, aes(x=dia)) + 
-  geom_area(aes(y=(activos)/1000, fill="activos"), alpha = 0.2) +
-  geom_area(aes(y=(recuperados)/1000, fill="recuperados"), alpha = 0.2) + 
-  geom_area(aes(y=muertos/1000, fill="muertos"), alpha = 0.2) + 
-  geom_area(aes(y=confirmados/1000, fill = "confirmados"), alpha=0.2)+
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  ylab("casos (x1000)") + xlab("fecha") + 
-  ggtitle("Casos totales de Covid-19 en el mundo") +
-  geom_line(aes(y=activos/1000, color = "activos"), size = 1.5) + 
-  geom_line(aes(y=confirmados/1000, color = "confirmados"), size = 1.5) + 
-  geom_line(aes(y=muertos/1000, color = "muertos"), size = 1.5) + 
-  geom_line(aes(y=recuperados/1000, color = "recuperados"), size = 1.5) +
-  geom_label(data = picoactivos, aes(y = activos/1000, x = dia, label = labelactivos), vjust = -.5)+ 
-  geom_label(data = picorecuperados, aes(y = recuperados/1000, x = dia, label = labelrecuperados), vjust = -.5)+ 
-  geom_label(data = picomuertos, aes(y = muertos/1000, x = dia, label = labelmuertos), vjust = -.5) + 
-  geom_label(data = picoconf, aes(y = confirmados/1000, x = dia, label = labelconf), vjust = -.5) + 
-  theme(legend.position="bottom") + 
-  theme(legend.title = element_blank()) + 
-  guides(color=FALSE)
-  
-
-p2 <- ggplot(nuevosmundo, aes(x=dia, y=activos/1000)) + 
-  geom_line(color="tomato3", size=1) + 
-  geom_point(size=2, color="tomato3") +  
-  scale_y_continuous(trans = 'log10') + 
-  xlab("fecha") + ylab("activos (x1000)") + 
-  ggtitle("Casos totales de Covid-19 en el mundo") +
-  labs(subtitle = "Escala logarítmica")
-  
-             
-grid.arrange(p1,p2,ncol=1)
-
-```
-
-
-```{r, echo = FALSE, warning = FALSE, message = FALSE}
-# rr, mm, cc dejamos solo datos, pais y añadimos total. tambien creamos otro df de casos activos restando muertos y enfermos a los confirmados. llamamos a este df aatotal
-cctotal <- cc %>%
-  select(-c("Long", "Lat", "Province/State")) %>%
-  rename("pais" = "Country/Region") %>%
-  group_by(pais) %>%
-  summarise_each(funs(sum))
-
-rrtotal <- rr %>%
-  select(-c("Long", "Lat", "Province/State")) %>%
-  rename("pais" = "Country/Region") %>%
-  group_by(pais) %>%
-  summarise_each(funs(sum))
-
-mmtotal <- mm %>%
-  select(-c("Long", "Lat", "Province/State")) %>%
-  rename("pais" = "Country/Region") %>%
-  group_by(pais) %>%
-  summarise_each(funs(sum))
-
-# creamos aatotal
-aatotal <- cctotal
-aatotal[2:ncol(aatotal)] <- rrtotal[2:ncol(rrtotal)] - mmtotal[2:ncol(mmtotal)]
-```
-
-```{r, echo = FALSE}
-# como tenemos el dataset en datos acumulados, usamos lag para restar a la pos i, el valor i-1, para que nos dé el aumento de cada dia
-ccdif <- cctotal[2:ncol(cctotal)] - lag(cctotal[2:ncol(cctotal)], 1)
-ccdif <- cbind(cctotal[1], cctotal)
-
-rrdif <- rrtotal[2:ncol(rrtotal)] - lag(rrtotal[2:ncol(rrtotal)], 1)
-rrdif <- cbind(rrtotal[1], rrtotal)
-
-mmdif <- mmtotal[2:ncol(mmtotal)] - lag(mmtotal[2:ncol(mmtotal)], 1)
-mmdif <- cbind(mmtotal[1], mmtotal)
-```
-
+## Vista general
 ```{r}
-
+nacional <- read.csv("./datasets/nacional_covid19.csv")
+nacional <- nacional %>% rename(fecha = "ï..fecha")
+nacional %>% 
+  ggplot(aes(x = fecha, y = ))
 ```
-
-
-
 
