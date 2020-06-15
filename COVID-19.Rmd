@@ -135,13 +135,13 @@ Tambien observamos una estacionalidad de una semana. Esto podría darse por no a
 ## Camas UCI
 
 ```{r}
-# pacientes en UCI
+# pacientes en UCI durante la pandemia
 uci <- read_csv("datasets/ccaa_covid19_uci.csv")
 
-# camas UCI
+# camas UCI por CA
 uci_camas <- read_csv("datasets/ccaa_camas_uci_2017.csv")
 
-# poblacion
+# poblacion (se importa raro y hay que hacer chanchullos)
 demo <- read_table2("datasets/poblacion.csv")
 ```
 
