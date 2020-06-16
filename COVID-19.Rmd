@@ -105,11 +105,11 @@ nacional %>%
   theme(legend.title = element_blank(), legend.position = "bottom") + 
   
   annotate("rect", xmin = fase0, xmax = fase1,
-           ymin=0, ymax=Inf, fill = "blue", alpha = .1) +
+           ymin=-Inf, ymax=Inf, fill = "blue", alpha = .1) +
   annotate("rect", xmin = fase1, xmax = fase2,
-           ymin=0, ymax=Inf, fill = "orange", alpha = .1) +
+           ymin=-Inf, ymax=Inf, fill = "orange", alpha = .1) +
   annotate("rect", xmin = fase2, xmax = max(nacional$fecha),
-           ymin=0, ymax=Inf, fill = "green", alpha = .1) +
+           ymin=-Inf, ymax=Inf, fill = "green", alpha = .1) +
   
   geom_label(aes(x = dia_max$fecha, y = dia_max$casos_nuevos, label = paste(dia_max$fecha, "/", dia_max$casos_nuevos, "casos")), hjust = -.1) +
  
@@ -129,7 +129,7 @@ plot(decompose(t))
 He creado una serie temporal de frecuencia 7 para observar la estacionalidad que vemos en la gráfica anterior.
 
 Podemos observar la tendencia exponencial al principio de la pandemia, y como poco a poco se van reduciendo los nuevos casos.
-Tambien observamos una estacionalidad de una semana. Esto podría darse por no acudir al hospital o médico o la no realización de tests los findes de semana.
+Tambien observamos una estacionalidad de 7 días. Esto podría darse por no acudir al hospital o médico o la no realización de tests los findes de semana.
 
 
 ## Camas UCI
@@ -140,8 +140,46 @@ uci <- read_csv("datasets/ccaa_covid19_uci.csv")
 
 # camas UCI por CA
 uci_camas <- read_csv("datasets/ccaa_camas_uci_2017.csv")
+uci_camas <- uci_camas %>%
+  rename(ID = cod_ine)
 
 # poblacion (se importa raro y hay que hacer chanchullos)
 demo <- read_table2("datasets/poblacion.csv")
+demo$Total <- as.numeric(gsub(".", "", demo$Total, fixed = TRUE))
+demo <- demo %>% 
+  filter(Periodo == 2019) %>% 
+  filter(Sexo == "Total") %>% 
+  select(ID, CCAA, Total)
+
+# sumo las camas de ceuta melilla y la rioja para que cuadre con el cvs de camas uci y lo añado con id = 21
+demo2 <- data.frame(ID = 21,
+                    CCAA = "Rioja_Ceuta_Melilla",
+                    Total = demo[demo$CCAA == "La_Rioja",]$Total+
+                      demo[demo$CCAA == "Ceuta",]$Total+
+                      demo[demo$CCAA == "Melilla",]$Total)
+
+# junto demo original con demo2 y quito la rioja
+demo <- demo %>% 
+  filter(ID != 17) %>% 
+  rbind(demo2) %>% 
+  filter(!CCAA %in% c("Ceuta", "Melilla"))
+
+uci_camas$ID <- as.numeric(uci_camas$ID)
+demo$ID <- as.numeric(demo$ID)
+
+demo <- demo %>% 
+  select(ID, CCAA, Total) %>% 
+  rename(Total_habitantes = Total)
+uci_camas <- uci_camas %>% 
+  select(ID, Privados, Públicos, Total) %>% 
+  rename(Total_camas = Total)
+
+camas_habitantes <- merge(demo, uci_camas, by = "ID")
+head(camas_habitantes)
 ```
 
+
+
+## TODO ESPAÑA:
+
+* dias desde ultimo dia con 0 infectados hasta 1000 infectados
