@@ -177,8 +177,7 @@ uci_camas <- uci_camas %>%
 ```
 
 
-```{r}
-
+```{r, fig.height=10, fig.width=10}
 # camas publicas, totales y privadas por cada mil habitantes
 camas_habitantes <- merge(demo, uci_camas, by = "ID")
 head(camas_habitantes)
@@ -186,9 +185,10 @@ head(camas_habitantes)
 colnames(camas_habitantes) <- tolower(colnames(camas_habitantes))
 
 camas_habitantes <- camas_habitantes %>% 
-  mutate(privados_100000 = format(round((privados/total_habitantes)*100000, 4), nsmall=4)) %>% 
-  mutate(publicos_100000 = format(round((públicos/total_habitantes)*100000, 4), nsmall=4)) %>% 
-  mutate(total_camas_100000 = format(round((total_camas/total_habitantes)*100000, 4), nsmall=4))
+  mutate(privados_100000 = format(round((privados/total_habitantes)*100000, 2), nsmall=2)) %>% 
+  mutate(publicos_100000 = format(round((públicos/total_habitantes)*100000, 2), nsmall=2)) %>% 
+  mutate(total_camas_100000 = format(round((total_camas/total_habitantes)*100000, 2), nsmall=2))
+
 ```
 
 
