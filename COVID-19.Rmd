@@ -185,23 +185,24 @@ head(camas_habitantes)
 colnames(camas_habitantes) <- tolower(colnames(camas_habitantes))
 
 camas_habitantes <- camas_habitantes %>% 
-  mutate(privados_100000 = format(round((privados/total_habitantes)*100000, 2), nsmall=2)) %>% 
-  mutate(publicos_100000 = format(round((públicos/total_habitantes)*100000, 2), nsmall=2)) %>% 
-  mutate(total_camas_100000 = format(round((total_camas/total_habitantes)*100000, 2), nsmall=2))
+  mutate(camas_privadas_100000 = as.numeric(format(round((privados/total_habitantes)*100000, 2), nsmall=2))) %>% 
+  mutate(camas_publicas_100000 = as.numeric(format(round((públicos/total_habitantes)*100000, 2), nsmall=2))) %>% 
+  mutate(total_camas_100000 = as.numeric(format(round((total_camas/total_habitantes)*100000, 2), nsmall=2)))
 
 camas_habitantes %>% 
-  select(ccaa, privados_100000, publicos_100000, total_camas_100000) %>% 
-  rename(privados = privados_100000,
-         publicos = publicos_100000,
+  select(ccaa, camas_privadas_100000, camas_publicas_100000, total_camas_100000) %>% 
+  rename(privadas = camas_privadas_100000,
+         publicas = camas_publicas_100000,
          total = total_camas_100000) %>% 
   reshape2::melt(id.vars = "ccaa") %>% 
-  filter(variable %in% c("privados", "publicos", "total")) %>% 
-  ggplot(aes(x=variable, y=value, fill = variable)) +
+  rename(tipo_cama = variable) %>% 
+  filter(tipo_cama %in% c("privadas", "publicas", "total")) %>% 
+  ggplot(aes(x=tipo_cama, y=value, fill = tipo_cama)) +
   geom_bar(stat = "identity", width = 0.75) + 
   facet_wrap(~ ccaa) + 
-  labs(title = "Camas UCI por cada 100,000 habitantes", caption = "Datos proporcionados por datadista") + 
-  xlab("") + ylab("Número de camas") + 
-  scale_x_continuous(breaks = round(seq(min(dat$x), max(dat$x), by = 0.5),1)) +
+  labs(title = "Camas UCI por cada 100,000 habitantes",subtitle = "Clasificados por Comunidad Autónoma y si pertenecen a un centro privado o público", caption = "Datos proporcionados por datadista") + 
+  xlab("") + ylab("Número de camas UCI") + 
+  theme(legend.position = "bottom", axis.ticks.x = element_blank(), axis.text.x = element_blank())
 
 ```
 
