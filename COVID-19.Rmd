@@ -253,9 +253,14 @@ library(grid)
 grid.arrange(p1, p2, p3, top = textGrob("Tipos de cama UCI por Comunidad Autónoma por cada 100,000 habitantes", gp=gpar(fontsize=15)))
 ```
 
-```{r}
+```{r, fig.height=20, fig.width=10}
 # casos uci acumulados
 casos_uci_ccaa <- read_csv("datasets/ccaa_covid19_uci_long.csv")
+casos_uci_ccaa %>% 
+  ggplot(aes(x=fecha, y=total)) +
+  geom_line() + 
+  facet_wrap(~ CCAA, scales = "free", ncol = 3) + 
+  labs(title = "Casos UCI acumulados por Comunidad Autónoma", caption = "Datos ofrecidos por Datadista")
 ```
 
 
