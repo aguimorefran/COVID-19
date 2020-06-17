@@ -189,6 +189,20 @@ camas_habitantes <- camas_habitantes %>%
   mutate(publicos_100000 = format(round((públicos/total_habitantes)*100000, 2), nsmall=2)) %>% 
   mutate(total_camas_100000 = format(round((total_camas/total_habitantes)*100000, 2), nsmall=2))
 
+camas_habitantes %>% 
+  select(ccaa, privados_100000, publicos_100000, total_camas_100000) %>% 
+  rename(privados = privados_100000,
+         publicos = publicos_100000,
+         total = total_camas_100000) %>% 
+  reshape2::melt(id.vars = "ccaa") %>% 
+  filter(variable %in% c("privados", "publicos", "total")) %>% 
+  ggplot(aes(x=variable, y=value, fill = variable)) +
+  geom_bar(stat = "identity", width = 0.75) + 
+  facet_wrap(~ ccaa) + 
+  labs(title = "Camas UCI por cada 100,000 habitantes", caption = "Datos proporcionados por datadista") + 
+  xlab("") + ylab("Número de camas") + 
+  scale_x_continuous(breaks = round(seq(min(dat$x), max(dat$x), by = 0.5),1)) +
+
 ```
 
 
@@ -196,3 +210,8 @@ camas_habitantes <- camas_habitantes %>%
 ## TODO ESPAÑA:
 
 * dias desde ultimo dia con 0 infectados hasta 1000 infectados
+* segundas residencias por ccaa
+* renta por ccaa
+* densidad de poblacion
+* tasa recuperacion por ccaa
+* arules a todo esto
