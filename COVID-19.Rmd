@@ -254,11 +254,10 @@ grid.arrange(p1, p2, p3, top = textGrob("Tipos de cama UCI por Comunidad Autóno
 ```
 
 ```{r}
-# cuanto tardaron en llenarse las uci de cada ccaa
-
-# casos uci ccaa
-
+# casos uci acumulados
+casos_uci_ccaa <- read_csv("datasets/ccaa_covid19_uci_long.csv")
 ```
+
 
 
 
