@@ -14,11 +14,14 @@ output:
 * **stringr** para parsear los datos en bruto.
 * **lubridate** para trabajar con fechas.
 * **ggplot2** para visualización de datos.
-* **arules** para reglas de asociación
+* **arules** para reglas de asociación.
+* **coronavirus** para obtener datos globales actualizados.
 
 # Datasets
 
 * **Datadista**: https://github.com/datadista/datasets
+* **WDICountry**: http://databank.worldbank.org/data/download/WDI_csv.zip
+* **coronavirus**: `coronavirus::coronavirus`
 
 ```{r}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.align = "center")
@@ -31,6 +34,7 @@ library(tidyverse)
 library(lubridate)
 library(stringr)
 library(arules)
+library(coronavirus)
 require(gridExtra)
 theme_set(theme_bw())
 ```
@@ -276,3 +280,40 @@ casos_uci_ccaa %>%
 * densidad de poblacion
 * tasa recuperacion por ccaa
 * arules a todo esto
+
+
+# Situación a nivel global
+
+```{r}
+library(coronavirus)
+
+data(coronavirus)
+df_summary <-coronavirus %>% 
+  group_by(country, type) %>%
+  summarise(total_cases = sum(cases)) %>%
+  pivot_wider(names_from = type, values_from = total_cases) %>%
+  arrange(-confirmed) %>%
+  filter(confirmed >= 25) %>%
+  select(country = country, confirmed, recovered, death) %>%
+  mutate(recover_rate = recovered/confirmed,
+         death_rate = death/confirmed)
+
+df_summary$recover_rate <- discretize(df_summary$recover_rate, cuts = 3, labels = c("low", "medium", "high"))
+df_summary$death_rate <- discretize(df_summary$death_rate, cuts = 3, labels = c("low", "medium", "high"))
+
+WDICountry <- read_csv("WDI Datasets/WDICountry.csv")[, c(2, 9)]
+WDICountry <- na.omit(WDICountry)
+names(WDICountry)[c(1, 2)] <- c("country", "income")
+WDICountry$income[WDICountry$income == "High income"] <- "high"
+WDICountry$income[WDICountry$income == "Upper middle income"] <- "medium"
+WDICountry$income[WDICountry$income == "Lower middle income"] <- "medium"
+WDICountry$income[WDICountry$income == "Low income"] <- "low"
+merged <- merge(df_summary, WDICountry)
+merged <- merged[c(1, 5, 6, 7)]
+merged <- column_to_rownames(merged, "country")
+merged$income <- as.factor(merged$income)
+
+rules <- apriori(merged, parameter = list(support = 0.01, confidence = 0.5, minlen = 2), appearance = list(lhs=c("income=low", "income=medium", "income=high")))
+
+inspect(rules)
+```
