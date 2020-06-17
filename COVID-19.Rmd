@@ -253,6 +253,14 @@ library(grid)
 grid.arrange(p1, p2, p3, top = textGrob("Tipos de cama UCI por Comunidad Autónoma por cada 100,000 habitantes", gp=gpar(fontsize=15)))
 ```
 
+```{r}
+# cuanto tardaron en llenarse las uci de cada ccaa
+
+# casos uci ccaa
+
+```
+
+
 
 ## Segundas residencias
 
