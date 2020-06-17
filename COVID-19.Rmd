@@ -263,7 +263,6 @@ casos_uci_ccaa %>%
   labs(title = "Casos UCI acumulados por Comunidad Autónoma", caption = "Datos ofrecidos por Datadista")
 ```
 
-HOLA
 
 
 ## Segundas residencias
