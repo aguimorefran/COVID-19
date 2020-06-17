@@ -200,12 +200,61 @@ camas_habitantes %>%
   ggplot(aes(x=tipo_cama, y=value, fill = tipo_cama)) +
   geom_bar(stat = "identity", width = 0.75) + 
   facet_wrap(~ ccaa) + 
-  labs(title = "Camas UCI por cada 100,000 habitantes",subtitle = "Clasificados por Comunidad Autónoma y si pertenecen a un centro privado o público", caption = "Datos proporcionados por datadista") + 
+  labs(title = "Camas UCI por cada 100,000 habitantes",subtitle = "Clasificados por Comunidad Autónoma y si pertenecen a un centro privado o público", caption = "Datos camas UCI de 2019\nDatos proporcionados por datadista") + 
   xlab("") + ylab("Número de camas UCI") + 
   theme(legend.position = "bottom", axis.ticks.x = element_blank(), axis.text.x = element_blank())
 
 ```
 
+```{r, fig.height=15, fig.width=10}
+p1 <- camas_habitantes %>% 
+  select(ccaa, camas_privadas_100000, camas_publicas_100000, total_camas_100000) %>% 
+  rename(privadas = camas_privadas_100000,
+         publicas = camas_publicas_100000,
+         total = total_camas_100000) %>% 
+  reshape2::melt(id.vars = "ccaa") %>% 
+  rename(tipo_cama = variable) %>%
+  filter(tipo_cama == "privadas") %>% 
+  ggplot(aes(x = reorder(ccaa, value), y = value)) +
+  geom_bar(stat = "identity", width = 0.75, fill = "tomato3") + 
+  coord_flip() + 
+  labs(title="Camas UCI privadas") + 
+  xlab("") + ylab("camas")
+
+p2 <- camas_habitantes %>% 
+  select(ccaa, camas_privadas_100000, camas_publicas_100000, total_camas_100000) %>% 
+  rename(privadas = camas_privadas_100000,
+         publicas = camas_publicas_100000,
+         total = total_camas_100000) %>% 
+  reshape2::melt(id.vars = "ccaa") %>% 
+  rename(tipo_cama = variable) %>%
+  filter(tipo_cama == "publicas") %>% 
+  ggplot(aes(x = reorder(ccaa, value), y = value)) +
+  geom_bar(stat = "identity", width = 0.75, fill = "orange") + 
+  coord_flip() + 
+  labs(title="Camas UCI públicas") + 
+  xlab("") + ylab("camas")
+
+p3 <- camas_habitantes %>% 
+  select(ccaa, camas_privadas_100000, camas_publicas_100000, total_camas_100000) %>% 
+  rename(privadas = camas_privadas_100000,
+         publicas = camas_publicas_100000,
+         total = total_camas_100000) %>% 
+  reshape2::melt(id.vars = "ccaa") %>% 
+  rename(tipo_cama = variable) %>%
+  filter(tipo_cama == "total") %>% 
+  ggplot(aes(x = reorder(ccaa, value), y = value)) +
+  geom_bar(stat = "identity", width = 0.75, fill = "purple") + 
+  coord_flip() + 
+  labs(title="Camas UCI totales") + 
+  xlab("") + ylab("camas")
+
+library(grid)
+grid.arrange(p1, p2, p3, top = textGrob("Tipos de cama UCI por Comunidad Autónoma por cada 100,000 habitantes", gp=gpar(fontsize=15)))
+```
+
+
+## Segundas residencias
 
 
 ## TODO ESPAÑA:
