@@ -253,55 +253,17 @@ library(grid)
 grid.arrange(p1, p2, p3, top = textGrob("Tipos de cama UCI por Comunidad Autónoma por cada 100,000 habitantes", gp=gpar(fontsize=15)))
 ```
 
-```{r, fig.height=10, fig.width=10}
-# casos uci acumulados
-casos_uci_ccaa <- read_csv("datasets/ccaa_covid19_uci_long.csv")
-casos_uci_ccaa %>% 
-  ggplot(aes(x=fecha, y=total)) +
-  geom_col(width = .5, fill = "tomato3") +
-  facet_wrap(~ CCAA, scales = "free") + 
-  labs(title = "Casos UCI", subtitle = "Casos UCI acumulados por Comunidad Autónoma", caption = "Datos ofrecidos por Datadista") + 
-  theme(axis.text.x = element_text(angle=30, vjust=0.6)) + 
-  ylab("casos acumulados de UCI") + xlab("")
-```
 
-```{r, fig.height=10, fig.width=10}
-# hospitalizados
-hospitalizados_ccaa <- read_csv("datasets/ccaa_covid19_hospitalizados_long.csv")
-hospitalizados_ccaa %>% 
-  ggplot(aes(x=fecha, y=total)) +
-  geom_col(width = .5, fill = "tomato3") +
-  facet_wrap(~ CCAA, scales = "free") + 
-  labs(title = "Casos UCI", subtitle = "Hospitalizados por Comunidad Autónoma", caption = "Datos ofrecidos por Datadista") + 
-  theme(axis.text.x = element_text(angle=30, vjust=0.6)) + 
-  ylab("pacientes hospitalizados") + xlab("")
-```
+
+
 
 
 HACER OTRO CON CASOS NO CON HOSPITALIZADOS Y UNIR CASOS CON SEGUNDAS RESIDENCIAS Y CASOS CON DENSIDAD DE POBLACION
 
 
-## Segundas residencias
-Al no haber información sobre los infectados por provincias, tendré que basarme en los datos por comunidad autónoma.
-```{r}
-library(readxl)
-viviendas <- read_excel("datasets/viviendas.XLS")
-viviendas_total <- viviendas %>% 
-  group_by(CCAA) %>% 
-  summarise(sum(Total)) %>% 
-  arrange(CCAA)
-# CAMBIAR POR CASOS NO HOSPITALIZADOS
-hospi_total_ccaa <- hospitalizados_ccaa %>%
-  group_by(CCAA) %>% 
-  summarise(max(total, na.rm = T)) %>% 
-  arrange(CCAA) %>% 
-  filter(!CCAA %in% c("Ceuta", "Melilla"))
 
-viviendas_total$CCAA <- tolower(viviendas_total$CCAA)
-hospi_total_ccaa$CCAA <- tolower(hospi_total_ccaa$CCAA)
 
-hospi_viviendas <- merge(viviendas_total, hospi_total_ccaa, by = "CCAA")
-```
+
 
 
 ## TODO ESPAÑA:
