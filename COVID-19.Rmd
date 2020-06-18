@@ -35,7 +35,6 @@ library(lubridate)
 library(stringr)
 library(arules)
 library(coronavirus)
-library(arulesViz)
 require(gridExtra)
 theme_set(theme_bw())
 ```
@@ -285,6 +284,8 @@ casos_uci_ccaa %>%
 
 # Situación a nivel global
 
+## Reglas de asociación entre el nivel económico de cada país y la manera en la que el virus ha afectado.
+
 ```{r}
 #coronavirus::update_dataset()
 data(coronavirus)
@@ -315,5 +316,20 @@ merged$income <- as.factor(merged$income)
 
 rules <- apriori(merged, parameter = list(support = 0.1, confidence = 0.5, minlen = 2), appearance = list(lhs=c("income=low", "income=medium", "income=high")))
 
-inspect(rules)
 ```
+
+**Con las 3 reglas que obtenemos podemos deducir:**
+
+* `r inspect(rules[1])$lhs` -> `r inspect(rules[1])$rhs` // sup = `r inspect(rules[1])$support`, conf = `r inspect(rules[1])$confidence`.\
+Los países que tienen un nivel económico bajo, presentan un ratio de pacientes curados bajo.\
+Esto puede deberse a que el sistema sanitario de dichos países tenga carencias.
+
+
+* `r inspect(rules[2])$lhs` -> `r inspect(rules[2])$rhs` // sup = `r inspect(rules[2])$support`, conf = `r inspect(rules[2])$confidence`.\
+Los países que tienen un nivel económico alto, presentan un ratio de pacientes curados alto.\
+Se puede deducir que esto se debe a que estos países disponen de un sistema sanitario más avanzado.
+
+
+* `r inspect(rules[3])$lhs` -> `r inspect(rules[3])$rhs` // sup = `r inspect(rules[3])$support`, conf = `r inspect(rules[3])$confidence`.\
+Los países que tienen un nivel económico alto, presentan un ratio de fallecidos alto.\
+Tras indagar sobre el tema, he llegado a la conclusión de que esta conclusión probablemente se deba a que los países con mayor nivel económico presentan una esperanza de vida mayor, ya que el virus afecta de manera crítica a los más mayores.
