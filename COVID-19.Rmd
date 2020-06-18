@@ -308,8 +308,9 @@ viviendas_total %>%
   geom_col(stat = "identity", fill = "tomato3", width = 0.75) + 
   coord_flip() + 
   xlab("") + ylab("porcentaje") + 
-  labs(title = "Porcentaje de viviendas secundarias por Comunidad Autónoma",
-       caption = "Datos de 2019\nInstituto Nacional de Estadística")
+  labs(title = "Porcentaje de segundas residencias por Comunidad Autónoma",
+       subtitle = "Viviendas no habitadas por mas de 75 días seguidos",
+       caption = "Datos de 2019 - Instituto Nacional de Estadística")
 ```
 
 
@@ -366,18 +367,34 @@ dens_pob %>%
        caption = "Instituto Nacional de Estadística")
 ```
 
+
 ```{r}
-# JUNTAR EN UN DATAFRAME PARA APLICAR REGRESION Y ARULES
-# casos hospi
-# casos uci diarios
-# casos infectaos
+# JUNTAR EN UN DATAFRAME PARA APLICAR REGRESION Y ARULES por CCAA
+# casos hospi totales
+# casos uci totales
+# casos infectaos totales
+# HECHO ----- camas por 100k habitantes
+# ratio mortalidad muertos totales / infectaos totales
+# HECHO ----- viviendas secundarias
+# estimador de como de rapido crece una funcion teniendo en cuenta la poblacion
+# DESCARGAR - PIB comunidad autonoma
+# DESCARGAR - presupuesto en sanidad
+
 # camas por 100k habitantes
+super <- select(camas_habitantes, ccaa, camas_privadas_100000, camas_publicas_100000, total_camas_100000)
+super <- super %>% 
+  filter(ccaa != "Rioja_Ceuta_Melilla")
+
 # viviendas secundarias
+viviendas_total <- viviendas_total %>% 
+  rename(ccaa = CCAA)
+viviendas_total$ccaa <- tolower(viviendas_total$ccaa)
+super$ccaa <- tolower(super$ccaa)
+
 
 ```
 
-
-
+############################################## BUSCAR MANUALMENTE CAMAS UCI DE LA RIOJA
 
 ## TODO ESPAÑA:
 
