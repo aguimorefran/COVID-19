@@ -369,7 +369,7 @@ dens_pob %>%
 # casos infectaos
 # camas por 100k habitantes
 # viviendas secundarias
-# 
+
 ```
 
 
