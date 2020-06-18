@@ -312,12 +312,65 @@ viviendas_total %>%
 
 ```{r}
 # densidad de poblacion
-densidad_pob <- read_delim("datasets/ccaa_densidad_pob.csv", 
+# como los datos estan sucios en pdf en el INE, descargo poblacion y busco area a mano
+pob <- read_delim("datasets/ccaa_pob.csv", 
     ";", escape_double = FALSE, trim_ws = TRUE)
-densidad_pob$total <- as.numeric(gsub(".", "", densidad_pob$total, fixed = TRUE))
-densidad_pob <- densidad_pob %>% select(cod_ine, CCAA, total)
-head(densidad_pob)
+pob$total <- as.numeric(gsub(".", "", pob$total, fixed = TRUE))
+pob <- pob %>% select(cod_ine, CCAA, total) %>% 
+  rename(ccaa = CCAA) %>% 
+  arrange(ccaa) %>% 
+  filter(!ccaa %in% c("Ceuta", "Melilla"))
+head(pob)
+
+area = data.frame(ccaa = c("Castilla_Leon",
+                           "Andalucía",
+                           "Castilla_La_Mancha",
+                           "Aragón",
+                           "Extremadura",
+                           "Cataluña",
+                           "Galicia",
+                           "Valencia",
+                           "Murcia",
+                           "Asturias",
+                           "Navarra",
+                           "Madrid",
+                           "Canarias",
+                           "Pais_Vasco",
+                           "Cantabria",
+                           "La_Rioja",
+                           "Baleares"),
+                  area = c(94200, 87600,79500,47700,41600,32100,29500,23000,11300,10600,10400,8000,7450,7250,5300,5050,500))
+area <- area %>% 
+  arrange(ccaa)
+
+dens_pob <- merge(pob, area, by = "ccaa") %>% 
+  arrange(cod_ine) %>% 
+  rename(poblacion = total) %>% 
+  mutate(densidad = poblacion/area)
 ```
+
+
+```{r}
+# plot densidad pob
+dens_pob %>% 
+  ggplot(aes(x = reorder(ccaa, densidad), y = densidad)) + 
+  geom_col(stat = "identity", width = 0.75, fill = "tomato3") + 
+  coord_flip() + 
+  xlab("") + ylab("habitantes / km^2") + 
+  labs(title = "Densidad de población por Comunidad Autónoma",
+       subtitle = "Habitantes por kilómetro cuadrado",
+       caption = "Instituto Nacional de Estadística")
+```
+
+```{r}
+# casos hospi
+# casos uci diarios
+# casos infectaos
+# camas por 100k habitantes
+# viviendas secundarias
+# 
+```
+
 
 
 
