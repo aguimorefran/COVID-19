@@ -35,6 +35,7 @@ library(lubridate)
 library(stringr)
 library(arules)
 library(coronavirus)
+library(arulesViz)
 require(gridExtra)
 theme_set(theme_bw())
 ```
@@ -285,8 +286,7 @@ casos_uci_ccaa %>%
 # Situación a nivel global
 
 ```{r}
-library(coronavirus)
-
+#coronavirus::update_dataset()
 data(coronavirus)
 df_summary <-coronavirus %>% 
   group_by(country, type) %>%
@@ -301,7 +301,7 @@ df_summary <-coronavirus %>%
 df_summary$recover_rate <- discretize(df_summary$recover_rate, cuts = 3, labels = c("low", "medium", "high"))
 df_summary$death_rate <- discretize(df_summary$death_rate, cuts = 3, labels = c("low", "medium", "high"))
 
-WDICountry <- read_csv("WDI Datasets/WDICountry.csv")[, c(2, 9)]
+WDICountry <- read_csv("datasets/WDICountry.csv")[, c(2, 9)]
 WDICountry <- na.omit(WDICountry)
 names(WDICountry)[c(1, 2)] <- c("country", "income")
 WDICountry$income[WDICountry$income == "High income"] <- "high"
@@ -313,7 +313,7 @@ merged <- merged[c(1, 5, 6, 7)]
 merged <- column_to_rownames(merged, "country")
 merged$income <- as.factor(merged$income)
 
-rules <- apriori(merged, parameter = list(support = 0.01, confidence = 0.5, minlen = 2), appearance = list(lhs=c("income=low", "income=medium", "income=high")))
+rules <- apriori(merged, parameter = list(support = 0.1, confidence = 0.5, minlen = 2), appearance = list(lhs=c("income=low", "income=medium", "income=high")))
 
 inspect(rules)
 ```
