@@ -363,6 +363,7 @@ dens_pob %>%
 ```
 
 ```{r}
+# JUNTAR EN UN DATAFRAME PARA APLICAR REGRESION Y ARULES
 # casos hospi
 # casos uci diarios
 # casos infectaos
