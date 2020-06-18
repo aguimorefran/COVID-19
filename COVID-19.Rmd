@@ -58,7 +58,6 @@ fase1 <- dmy("2/05/2020")
 fase2 <- dmy("18/05/2020")
 ```
 
-## Vista general
 
 * ¿Cuándo se superan los 1000 casos diarios? ¿Y los 100 fallecidos? 
 ```{r}
@@ -132,7 +131,6 @@ Podemos observar la tendencia exponencial al principio de la pandemia, y como po
 Tambien observamos una estacionalidad de 7 días. Esto podría darse por no acudir al hospital o médico o la no realización de tests los findes de semana.
 
 
-## Hospitalizados
 
 ```{r}
 # pacientes en UCI durante la pandemia
@@ -253,16 +251,73 @@ library(grid)
 grid.arrange(p1, p2, p3, top = textGrob("Tipos de cama UCI por Comunidad Autónoma por cada 100,000 habitantes", gp=gpar(fontsize=15)))
 ```
 
+```{r}
+# CASOS UCI y hospitalizados
+
+# totales nuevos uci
+casos_uci_ccaa <- read_csv("datasets/ccaa_covid19_uci_long.csv")
+casos_uci_ccaa <- casos_uci_ccaa%>% 
+  mutate(nuevos_uci = c(NA, diff(total)))
+
+# totales nuevos hospitalizados
+casos_hospi_ccaa <- read_csv("datasets/ccaa_covid19_hospitalizados_long.csv")
+casos_hospi_ccaa <- casos_hospi_ccaa%>% 
+  mutate(nuevos_hospi = c(NA, diff(total)))
+
+# junto para plot uci y hospi nuevos
+casos_hospi_ccaa <- merge(casos_hospi_ccaa, casos_uci_ccaa, by = c("fecha", "cod_ine")) %>% 
+  select(fecha, CCAA.x, nuevos_uci, nuevos_hospi) %>% 
+  rename(CCAA = CCAA.x) %>% 
+  mutate(nuevos_hospi = nuevos_hospi - nuevos_uci)
+```
+
+
+```{r}
+# plot hospi leves y hospi uci
+casos_hospi_ccaa %>% 
+  ggplot(aes(x = fecha)) +
+  geom_col(aes(y=nuevos_hospi, fill = "blue"), stat = "identity", alpha = 0.5) + 
+  geom_col(aes(y=nuevos_uci, fill = "red"), stat = "identity", alpha = 0.5) + 
+  labs(title = "Casos hospitalizados diarios por Covid-19", subtitle = "Casos hospitalizados leves y casos UCI", caption = "Puede que los casos de UCI no sean mayores por la limitada capacidad del sistema sanitario\nSe asumen como casos laves aquellos que no estan en UCI\nDatos proporcionados por Datadista") +
+  scale_fill_discrete(name = "Hospitalizados", labels = c("leves", "UCI")) + 
+  ylab("casos")
+```
+
+
+Al no haber información sobre los infectados por provincias, tendré que basarme en los datos por comunidad autónoma.
+```{r}
+# segundas residencias
+library(readxl)
+viviendas <- read_excel("datasets/viviendas.XLS")
+viviendas_total <- viviendas %>% 
+  group_by(CCAA) %>% 
+  summarise(total_principales = sum(Principales),
+            total_secundarias = sum(No_principales),
+            perc_secundarias = total_secundarias/(total_principales+total_secundarias)) %>% 
+  arrange(CCAA)
+```
+
+```{r}
+# plot viviendas secundarias por ccaa
+viviendas_total %>% 
+  ggplot(aes(x = reorder(CCAA, perc_secundarias), y = perc_secundarias)) + 
+  geom_col(stat = "identity", fill = "tomato3", width = 0.75) + 
+  coord_flip() + 
+  xlab("") + ylab("porcentaje") + 
+  labs(title = "Porcentaje de viviendas secundarias por Comunidad Autónoma",
+       caption = "Datos de 2019\nInstituto Nacional de Estadística")
+```
 
 
 
-
-
-HACER OTRO CON CASOS NO CON HOSPITALIZADOS Y UNIR CASOS CON SEGUNDAS RESIDENCIAS Y CASOS CON DENSIDAD DE POBLACION
-
-
-
-
+```{r}
+# densidad de poblacion
+densidad_pob <- read_delim("datasets/ccaa_densidad_pob.csv", 
+    ";", escape_double = FALSE, trim_ws = TRUE)
+densidad_pob$total <- as.numeric(gsub(".", "", densidad_pob$total, fixed = TRUE))
+densidad_pob <- densidad_pob %>% select(cod_ine, CCAA, total)
+head(densidad_pob)
+```
 
 
 
