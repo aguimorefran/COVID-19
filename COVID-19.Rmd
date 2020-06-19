@@ -371,9 +371,32 @@ dens_pob %>%
        caption = "Instituto Nacional de Estadística")
 ```
 ```{r}
-# funcion estimadora de crecimiento
+# estimacion de crecimiento teniendo en cuenta dias hasta el maximo, numero de infectados y poblacion
 
-  
+# primero voy a hacer la regresion de la curva exponencial de crecimiento de infectados
+casos_ccaa <- read_csv("datasets/ccaa_covid19_casos_long.csv")
+casos_ccaa <- casos_ccaa %>% 
+  rename(ccaa = CCAA)
+casos_ccaa$ccaa <- tolower(casos_ccaa$ccaa)
+
+# sacar dias entre primer infectado y dia con max infectados
+casos_ccaa_nuevos <- casos_ccaa %>% 
+  mutate(nuevos = c(0, diff(total))) %>% 
+  mutate(nuevos = if_else(nuevos < 0,
+                          0,
+                          nuevos)) %>% 
+  select(fecha, ccaa, nuevos)
+casos_ccaa_nuevos_creciente <- casos_ccaa_nuevos %>% 
+  filter(nuevos != 0) %>% 
+  group_by(ccaa) %>% 
+  filter(row_number() <= which(nuevos == max(nuevos, na.rm = T))) # cojo todas los días antes del maximo en cada comunidad
+
+# vemos una vista previa y mas o menos tiene buena pinta, quitando algunas comunidades con algun pico de outlier. voy a quitarlos
+ggplot(casos_ccaa_nuevos_creciente, aes(x=fecha, y = nuevos)) + 
+  geom_col(stat = "identity") + 
+  facet_wrap(~ ccaa, scales = "free")
+
+
 ```
 
 
