@@ -370,7 +370,8 @@ dens_pob %>%
        subtitle = "Habitantes por kilómetro cuadrado",
        caption = "Instituto Nacional de Estadística")
 ```
-```{r}
+
+```{r, fig.height=7.5, fig.width=7.5}
 # estimacion de crecimiento teniendo en cuenta dias hasta el maximo, numero de infectados y poblacion
 
 # primero voy a hacer la regresion de la curva exponencial de crecimiento de infectados
@@ -378,6 +379,10 @@ casos_ccaa <- read_csv("datasets/ccaa_covid19_casos_long.csv")
 casos_ccaa <- casos_ccaa %>% 
   rename(ccaa = CCAA)
 casos_ccaa$ccaa <- tolower(casos_ccaa$ccaa)
+
+# quito ceuta y melilla
+casos_ccaa <- casos_ccaa %>% 
+  filter(!ccaa %in% c("ceuta", "melilla"))
 
 # sacar dias entre primer infectado y dia con max infectados
 casos_ccaa_nuevos <- casos_ccaa %>% 
@@ -396,6 +401,52 @@ ggplot(casos_ccaa_nuevos_creciente, aes(x=fecha, y = nuevos)) +
   geom_col(stat = "identity") + 
   facet_wrap(~ ccaa, scales = "free")
 
+# saco maximo de aragon, cataluña, la rioja, c.la.mancha
+max_aragon <- casos_ccaa_nuevos_creciente %>% 
+  filter(ccaa == "aragón") %>% 
+  arrange(-nuevos)
+max_cat <- casos_ccaa_nuevos_creciente %>% 
+  filter(ccaa == "cataluña") %>% 
+  arrange(-nuevos)
+max_rioj <- casos_ccaa_nuevos_creciente %>% 
+  filter(ccaa == "la_rioja") %>% 
+  arrange(-nuevos)
+max_mancha <- casos_ccaa_nuevos_creciente %>% 
+  filter(ccaa == "castilla_la_mancha") %>% 
+  arrange(-nuevos)
+max_leon <- casos_ccaa_nuevos_creciente %>% 
+  filter(ccaa == "castilla_león") %>% 
+  arrange(-nuevos)
+max_navarra <- casos_ccaa_nuevos_creciente %>% 
+  filter(ccaa == "navarra") %>% 
+  arrange(-nuevos)
+
+# y lo quito del df
+casos_ccaa_nuevos_creciente <- casos_ccaa_nuevos_creciente %>% 
+  filter(!nuevos == head(max_aragon$nuevos, 1)) %>% 
+  filter(!nuevos %in% head(max_mancha$nuevos, 2)) %>% 
+  filter(!nuevos == head(max_leon$nuevos,1)) %>% 
+  filter(!nuevos %in% head(max_cat$nuevos, 2)) %>% 
+  filter(!nuevos == head(max_rioj$nuevos, 1)) %>%
+  filter(!nuevos %in% head(max_navarra$nuevos, 2)) %>% 
+  filter(nuevos != 0) %>% 
+  group_by(ccaa) %>% 
+  filter(row_number() <= which(nuevos == max(nuevos, na.rm = T)))
+
+# vemos una vista previa
+ggplot(casos_ccaa_nuevos_creciente, aes(x=fecha, y = nuevos)) + 
+  geom_col(stat = "identity") + 
+  facet_wrap(~ ccaa, scales = "free")
+
+# asigno dias desde caso 0 hasta caso max
+casos_ccaa_nuevos_creciente <- casos_ccaa_nuevos_creciente %>% 
+  group_by(ccaa) %>% 
+  mutate(dias_caso0 = row_number())
+
+# hago regresion por cada ccaa de casos ~ e^(a*dias)
+modelos <- casos_ccaa_nuevos_creciente %>% 
+  group_by(ccaa) %>%
+  summarise(mod = list(nls(nuevos ~ I(exp(dias_caso0*a) + b) )))
 
 ```
 
