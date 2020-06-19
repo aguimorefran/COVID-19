@@ -153,17 +153,9 @@ demo <- demo %>%
   filter(Sexo == "Total") %>% 
   select(ID, CCAA, Total)
 
-# sumo las camas de ceuta melilla y la rioja para que cuadre con el cvs de camas uci y lo añado con id = 21
-demo2 <- data.frame(ID = 21,
-                    CCAA = "Rioja_Ceuta_Melilla",
-                    Total = demo[demo$CCAA == "La_Rioja",]$Total+
-                      demo[demo$CCAA == "Ceuta",]$Total+
-                      demo[demo$CCAA == "Melilla",]$Total)
 
 # junto demo original con demo2 y quito la rioja
 demo <- demo %>% 
-  filter(ID != 17) %>% 
-  rbind(demo2) %>% 
   filter(!CCAA %in% c("Ceuta", "Melilla"))
 
 uci_camas$ID <- as.numeric(uci_camas$ID)
@@ -172,10 +164,22 @@ demo$ID <- as.numeric(demo$ID)
 demo <- demo %>% 
   select(ID, CCAA, Total) %>% 
   rename(Total_habitantes = Total)
+
 uci_camas <- uci_camas %>% 
   select(ID, Privados, Públicos, Total) %>% 
   rename(Total_camas = Total)
 
+#quito id 21
+uci_camas <- uci_camas %>% 
+  filter(ID != 21)
+
+# añado camas la rioja
+rioj <- data.frame(ID = 17,
+                   Privados = 0,
+                   Públicos = 17,
+                   Total_camas = 17)
+
+uci_camas <- rbind(uci_camas, rioj)
 ```
 
 
@@ -202,7 +206,7 @@ camas_habitantes %>%
   ggplot(aes(x=tipo_cama, y=value, fill = tipo_cama)) +
   geom_bar(stat = "identity", width = 0.75) + 
   facet_wrap(~ ccaa) + 
-  labs(title = "Camas UCI por cada 100,000 habitantes",subtitle = "Clasificados por Comunidad Autónoma y si pertenecen a un centro privado o público", caption = "Datos camas UCI de 2019\nDatos proporcionados por datadista") + 
+  labs(title = "Camas UCI por cada 100,000 habitantes",subtitle = "Clasificados por Comunidad Autónoma y si pertenecen a un centro privado o público", caption = "Datos camas UCI de 2017\nDatos proporcionados por datadista") + 
   xlab("") + ylab("Número de camas UCI") + 
   theme(legend.position = "bottom", axis.ticks.x = element_blank(), axis.text.x = element_blank())
 
@@ -265,11 +269,11 @@ casos_uci_ccaa <- casos_uci_ccaa%>%
 
 # totales nuevos hospitalizados
 casos_hospi_ccaa <- read_csv("datasets/ccaa_covid19_hospitalizados_long.csv")
-casos_hospi_ccaa <- casos_hospi_ccaa%>% 
+casos_hospi_ccaa_nuevos <- casos_hospi_ccaa%>% 
   mutate(nuevos_hospi = c(NA, diff(total)))
 
 # junto para plot uci y hospi nuevos
-casos_hospi_ccaa <- merge(casos_hospi_ccaa, casos_uci_ccaa, by = c("fecha", "cod_ine")) %>% 
+casos_hospi_ccaa_nuevos <- merge(casos_hospi_ccaa_nuevos, casos_uci_ccaa, by = c("fecha", "cod_ine")) %>% 
   select(fecha, CCAA.x, nuevos_uci, nuevos_hospi) %>% 
   rename(CCAA = CCAA.x) %>% 
   mutate(nuevos_hospi = nuevos_hospi - nuevos_uci)
@@ -278,7 +282,7 @@ casos_hospi_ccaa <- merge(casos_hospi_ccaa, casos_uci_ccaa, by = c("fecha", "cod
 
 ```{r}
 # plot hospi leves y hospi uci
-casos_hospi_ccaa %>% 
+casos_hospi_ccaa_nuevos %>% 
   ggplot(aes(x = fecha)) +
   geom_col(aes(y=nuevos_hospi, fill = "blue"), stat = "identity", alpha = 0.5) + 
   geom_col(aes(y=nuevos_uci, fill = "red"), stat = "identity", alpha = 0.5) + 
@@ -366,15 +370,21 @@ dens_pob %>%
        subtitle = "Habitantes por kilómetro cuadrado",
        caption = "Instituto Nacional de Estadística")
 ```
+```{r}
+# funcion estimadora de crecimiento
+
+  
+```
 
 
 ```{r}
 # JUNTAR EN UN DATAFRAME PARA APLICAR REGRESION Y ARULES por CCAA
-# casos hospi totales
-# casos uci totales
-# casos infectaos totales
-# HECHO ----- camas por 100k habitantes
+# porcentaje hospitalizados leves
+# porcentaje hospitalizados uci
+# porcentaje casos infectados
 # ratio mortalidad muertos totales / infectaos totales
+# ratio recuperacion recu totales / infectaos totales
+# HECHO ----- camas por 100k habitantes
 # HECHO ----- viviendas secundarias
 # estimador de como de rapido crece una funcion teniendo en cuenta la poblacion
 # DESCARGAR - PIB comunidad autonoma
@@ -390,6 +400,9 @@ viviendas_total <- viviendas_total %>%
   rename(ccaa = CCAA)
 viviendas_total$ccaa <- tolower(viviendas_total$ccaa)
 super$ccaa <- tolower(super$ccaa)
+super <- merge(viviendas_total, super, by = "ccaa")
+super <- super %>% 
+  select(-c(total_principales, total_secundarias))
 
 
 ```
