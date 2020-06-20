@@ -443,10 +443,9 @@ casos_ccaa_nuevos_creciente <- casos_ccaa_nuevos_creciente %>%
   group_by(ccaa) %>% 
   mutate(dias_caso0 = row_number())
 
-# hago regresion por cada ccaa de casos ~ e^(a*dias)
-modelos <- casos_ccaa_nuevos_creciente %>% 
-  group_by(ccaa) %>%
-  summarise(mod = list(nls(nuevos ~ I(exp(dias_caso0*a) + b) )))
+# hago regresion por cada ccaa
+
+# ESTANCADO
 
 ```
 
@@ -460,7 +459,7 @@ modelos <- casos_ccaa_nuevos_creciente %>%
 # ratio recuperacion recu totales / infectaos totales
 # HECHO ----- camas por 100k habitantes
 # HECHO ----- viviendas secundarias
-# estimador de como de rapido crece una funcion teniendo en cuenta la poblacion
+# regresion de la curva para puntuar como ha crecido
 # DESCARGAR - PIB comunidad autonoma
 # DESCARGAR - presupuesto en sanidad
 
