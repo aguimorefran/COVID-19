@@ -460,7 +460,11 @@ for(i in unique(casos_ccaa_nuevos_creciente$ccaa)){
 }
 
 # por fin obtengo el ratio de crecimiento de cada ccaa
-kableExtra::kable(modelos)
+m <- modelos %>% 
+  arrange(-a) %>% 
+  rename("C.Autónoma" = ccaa) %>% 
+  rename(crecimiento = a)
+kableExtra::kable(m)
 
 # ESTANCADO
 
