@@ -443,7 +443,24 @@ casos_ccaa_nuevos_creciente <- casos_ccaa_nuevos_creciente %>%
   group_by(ccaa) %>% 
   mutate(dias_caso0 = row_number())
 
-# hago regresion por cada ccaa
+# hago regresion exponencial por cada ccaa
+
+modelos <- data.frame(ccaa = character(), a = numeric())
+for(i in unique(casos_ccaa_nuevos_creciente$ccaa)){
+  set <- subset(casos_ccaa_nuevos_creciente, ccaa == i)
+  modelo <- nls(nuevos ~ exp(dias_caso0 * a), data = set)
+  m <- data.frame(ccaa = i, a = summary(modelo)$coefficients[1])
+  modelos <- rbind(modelos, m)
+  
+  
+  plot(set$dias_caso0, set$nuevos, main = paste(i, "\n"), xlab = "días desde caso 0", ylab = "casos nuevos")
+  lines(set$dias_caso0, predict(modelo), col = "red")
+  legend("topright", pch = 1, col = c("black", "red"), legend = c("observado", "modelo y = e^ax"))
+  mtext(paste("a=", summary(modelo)$coefficients[1]), size = 1)
+}
+
+# por fin obtengo el ratio de crecimiento de cada ccaa
+kableExtra::kable(modelos)
 
 # ESTANCADO
 
