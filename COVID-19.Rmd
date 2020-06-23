@@ -33,6 +33,7 @@ library(readr)
 library(tidyverse)
 library(lubridate)
 library(stringr)
+library(stringi)
 library(arules)
 library(coronavirus)
 require(gridExtra)
@@ -301,14 +302,14 @@ viviendas_total <- viviendas %>%
   group_by(CCAA) %>% 
   summarise(total_principales = sum(Principales),
             total_secundarias = sum(No_principales),
-            perc_secundarias = total_secundarias/(total_principales+total_secundarias)) %>% 
+            porcentaje_vivs_secundarias = total_secundarias/(total_principales+total_secundarias)) %>% 
   arrange(CCAA)
 ```
 
 ```{r}
 # plot viviendas secundarias por ccaa
 viviendas_total %>% 
-  ggplot(aes(x = reorder(CCAA, perc_secundarias), y = perc_secundarias)) + 
+  ggplot(aes(x = reorder(CCAA, porcentaje_vivs_secundarias), y = porcentaje_vivs_secundarias)) + 
   geom_col(stat = "identity", fill = "tomato3", width = 0.75) + 
   coord_flip() + 
   xlab("") + ylab("porcentaje") + 
@@ -348,7 +349,7 @@ area = data.frame(ccaa = c("Castilla_Leon",
                            "Cantabria",
                            "La_Rioja",
                            "Baleares"),
-                  area = c(94200, 87600,79500,47700,41600,32100,29500,23000,11300,10600,10400,8000,7450,7250,5300,5050,500))
+                  area = c(94200, 87600,79500,47700,41600,32100,29500,23000,11300,10600,10400,8000,7450,7250,5300,5050,5000))
 area <- area %>% 
   arrange(ccaa)
 
@@ -452,12 +453,14 @@ for(i in unique(casos_ccaa_nuevos_creciente$ccaa)){
   m <- data.frame(ccaa = i, a = summary(modelo)$coefficients[1])
   modelos <- rbind(modelos, m)
   
-  
+
   plot(set$dias_caso0, set$nuevos, main = paste(i, "\n"), xlab = "días desde caso 0", ylab = "casos nuevos")
   lines(set$dias_caso0, predict(modelo), col = "red")
   legend("topright", pch = 1, col = c("black", "red"), legend = c("observado", "modelo y = e^ax"))
   mtext(paste("a=", summary(modelo)$coefficients[1]), size = 1)
 }
+
+modelos$ccaa <- as.character.factor(modelos$ccaa)
 
 # por fin obtengo el ratio de crecimiento de cada ccaa
 m <- modelos %>% 
@@ -466,29 +469,33 @@ m <- modelos %>%
   rename(crecimiento = a)
 kableExtra::kable(m)
 
-# ESTANCADO
 
 ```
 
 
 ```{r}
 # JUNTAR EN UN DATAFRAME PARA APLICAR REGRESION Y ARULES por CCAA
-# porcentaje hospitalizados leves
-# porcentaje hospitalizados uci
-# porcentaje casos infectados
-# ratio mortalidad muertos totales / infectaos totales
-# ratio recuperacion recu totales / infectaos totales
+
+# HECHO ----- porcentaje casos infectados
+# HECHO ----- densidad de poblacion
+# HECHO ----- ratio mortalidad muertos totales / infectaos totales
 # HECHO ----- camas por 100k habitantes
 # HECHO ----- viviendas secundarias
-# regresion de la curva para puntuar como ha crecido
+# HECHO ----- exponente crecimiento
 # DESCARGAR - PIB comunidad autonoma
 # DESCARGAR - presupuesto en sanidad
+```
 
+
+```{r}
 # camas por 100k habitantes
 super <- select(camas_habitantes, ccaa, camas_privadas_100000, camas_publicas_100000, total_camas_100000)
 super <- super %>% 
   filter(ccaa != "Rioja_Ceuta_Melilla")
+```
 
+
+```{r}
 # viviendas secundarias
 viviendas_total <- viviendas_total %>% 
   rename(ccaa = CCAA)
@@ -497,15 +504,105 @@ super$ccaa <- tolower(super$ccaa)
 super <- merge(viviendas_total, super, by = "ccaa")
 super <- super %>% 
   select(-c(total_principales, total_secundarias))
+super$ccaa <- stri_trans_general(super$ccaa, "Latin-ASCII")
+```
 
+```{r}
+# exponente crecimiento
+modelos$ccaa <- stri_trans_general(modelos$ccaa, "Latin-ASCII")
+super <- merge(modelos, super, by = "ccaa") %>% 
+  rename(crecimiento_exp = a)
+```
+
+```{r}
+# densidad de poblacion
+dens_pob$ccaa <- dens_pob$ccaa %>% 
+  tolower() %>% 
+  stri_trans_general("Latin-ASCII")
+super <- dens_pob %>% 
+  select(ccaa, poblacion, densidad) %>% 
+  merge(super, by = "ccaa")
+```
+
+
+```{r}
+# porcentaje casos infectados
+df <- casos_ccaa %>% 
+  group_by(ccaa) %>% 
+  filter(total == max(total, na.rm = T)) %>% 
+  filter(!ccaa %in% c("ceuta", "melilla")) %>% 
+  select(ccaa, total)
+df$ccaa <- stri_trans_general(df$ccaa, "Latin-ASCII")
+super <- merge(df, super, by = "ccaa") %>% 
+  rename(porcentaje_infectados = total) %>% 
+  mutate(porcentaje_infectados = porcentaje_infectados/poblacion)
+super <- super[!duplicated(super), ]
 
 ```
 
-############################################## BUSCAR MANUALMENTE CAMAS UCI DE LA RIOJA
+```{r}
+# porcentaje mortalidad sobre infectaos
+ccaa_fallecidos <- read_csv("datasets/ccaa_covid19_fallecidos_long.csv")
+ccaa_fallecidos$CCAA <- stri_trans_general(ccaa_fallecidos$CCAA, "Latin-ASCII") %>% 
+  tolower()
+colnames(ccaa_fallecidos) <- tolower(colnames(ccaa_fallecidos))
+super <- ccaa_fallecidos %>% 
+  group_by(ccaa) %>% 
+  filter(total == max(total,na.rm = T)) %>% 
+  slice(1) %>% 
+  filter(!ccaa %in% c("ceuta", "melilla")) %>% 
+  select(ccaa, total) %>% 
+  rename(fallecidos = total) %>% 
+  merge(super, by = "ccaa")
+```
+
+```{r}
+# porcentaje del total gastado en sanidad 2019 por ccaa
+super <- super %>% 
+  arrange(ccaa)
+sanidad <- data.frame(ccaa = super$ccaa,
+                      porcentaje_sanidad = c(0.3229,
+                                           0.3478,
+                                           0.3930,
+                                           0.3159,
+                                           0.3395,
+                                           0.3063,
+                                           0.3300,
+                                           0.3641,
+                                           0.2887,
+                                           0.3246,
+                                           0.3455,
+                                           0.2917,
+                                           0.3560,
+                                           0.3310,
+                                           0.2509,
+                                           0.3357,
+                                           0.2953))
+
+# uno con super
+super <- merge(super, sanidad, by = "ccaa")
+
+sanidad %>% 
+  ggplot(aes(x = reorder(ccaa, porcentaje_sanidad), y = porcentaje_sanidad)) + 
+  geom_col(stat = "identity", fill = "tomato3", width = 0.75) + 
+  coord_flip() + 
+  xlab("") + ylab("porcentaje") + 
+  labs(title = "Porcentaje de presupuesto en sanidad por C. Autónoma", 
+       subtitle = "Porcentaje respecto 'Producción de Bienes Públicos de Carácter Preferente'")
+```
+
+
+
+```{r}
+colnames(super)
+```
+
+
+
+
 
 ## TODO ESPAÑA:
 
-* segundas residencias por ccaa
 * renta por ccaa
 * densidad de poblacion
 * tasa recuperacion por ccaa
