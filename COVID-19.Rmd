@@ -483,8 +483,7 @@ kableExtra::kable(m)
 # HECHO ----- viviendas secundarias
 # HECHO ----- exponente crecimiento
 # HECHO ----- edades por comunidad autonoma
-# DESCARGAR - PIB comunidad autonoma
-# DESCARGAR - presupuesto en sanidad
+# HECHO ----- DESCARGAR - presupuesto en sanidad
 ```
 
 
@@ -535,8 +534,8 @@ df <- casos_ccaa %>%
   select(ccaa, total)
 df$ccaa <- stri_trans_general(df$ccaa, "Latin-ASCII")
 super <- merge(df, super, by = "ccaa") %>% 
-  rename(porcentaje_infectados = total) %>% 
-  mutate(porcentaje_infectados = porcentaje_infectados/poblacion)
+  rename(total_infectados = total) %>% 
+  mutate(porcentaje_infectados = total_infectados/poblacion)
 super <- super[!duplicated(super), ]
 
 ```
@@ -618,7 +617,19 @@ ccaa_edades <- ccaa_edades %>%
   mutate(porcentaje = total/poblacion) %>% 
   select(ccaa, edad,porcentaje)
 
+# le hago un pivot wider
+ccaa_edades <- pivot_wider(ccaa_edades, names_from = "edad", values_from = "porcentaje")
+ccaa_edades <- ccaa_edades %>% 
+  rename_at(vars(-ccaa), ~ paste0("edad_", .))
 
+# junto con super
+super <- merge(super, ccaa_edades, by = "ccaa")
+
+# limpio de nuevo super
+super <- super %>% 
+  rename(dens_pob = densidad) %>% 
+  rename(porcentaje_fallecidos = fallecidos) %>% 
+  mutate(porcentaje_fallecidos = porcentaje_fallecidos/total_infectados)
   
 ```
 
@@ -628,7 +639,55 @@ ccaa_edades <- ccaa_edades %>%
 colnames(super)
 ```
 
+```{r}
+# discretizo el df super
+super_disc <- super
 
+# quito columna de poblacion
+super_disc <- super_disc %>% 
+  select(-c(poblacion))
 
+# indices columnas numericas
+idx <- sapply(super_disc, class) == "numeric"
+super_disc[, idx] <- lapply(super_disc[, idx], discretize, labels = c("bajo", "medio", "alto"))
+head(super_disc)
+```
+
+```{r}
+# aplico arules
+reglas <- apriori(super_disc,
+                  parameter = list(confidence = 0.8, support = 0.1))
+reglas <- reglas[!is.redundant(reglas)] %>% 
+  sort(by = "lift")
+inspect(head(reglas, 10))
+
+# reglas que impliquen crecimiento exponencial alto
+reglas_crecimiento <- subset(reglas, rhs %in% "crecimiento_exp=alto")
+reglas_crecimiento <- sort(reglas_crecimiento, by = "lift")
+inspect(head(reglas_crecimiento, 10))
+
+# crecimiento alto que contengan edad en lhs
+reglas_crecimiento2 <- subset(reglas_crecimiento, lhs %pin% "edad") %>% 
+  sort(by = "lift")
+inspect(head(reglas_crecimiento2, 10))
+
+# reglas que impliquen porcentaje infectados alto
+reglas_infectados <- subset(reglas, rhs %in% "porcentaje_infectados=alto") %>% 
+  sort(by = "lift")
+inspect(head(reglas_infectados, 10))
+
+# reglas que tengan como rhs solo pocas camas publicas
+reglas_camas_pub <- subset(reglas, lhs %in% "camas_publicas_100000=bajo") %>%
+  subset(size(lhs) == 1) %>% 
+  sort(by = "lift")
+inspect(head(reglas_camas_pub, 10))
+
+# reglas con pocas camas publicas y (altos infectados o fallecidos)
+reglas_sanidad_camas <- subset(reglas, lhs %in% "camas_publicas_10000s0=bajo") %>%
+  subset(rhs %in% c("porcentaje_infectados=alto", "porcentaje_fallecidos=alto")) %>% 
+  sort(by = "lift")
+inspect(head(reglas_sanidad_camas, 10))
 
 ```
+
+
