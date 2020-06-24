@@ -482,6 +482,7 @@ kableExtra::kable(m)
 # HECHO ----- camas por 100k habitantes
 # HECHO ----- viviendas secundarias
 # HECHO ----- exponente crecimiento
+# HECHO ----- edades por comunidad autonoma
 # DESCARGAR - PIB comunidad autonoma
 # DESCARGAR - presupuesto en sanidad
 ```
@@ -591,6 +592,36 @@ sanidad %>%
        subtitle = "Porcentaje respecto 'Producción de Bienes Públicos de Carácter Preferente'")
 ```
 
+```{r}
+# rangos de edades
+ccaa_edades <- read_delim("datasets/ccaa_edades_2019.csv", 
+    "\t", escape_double = FALSE, trim_ws = TRUE)
+ccaa_edades <- ccaa_edades %>% 
+  rename(ccaa = Comunidades) %>% 
+  select(ccaa, Edad, Total)
+colnames(ccaa_edades) = tolower(colnames(ccaa_edades))
+ccaa_edades$total <- as.numeric(gsub(".", "", ccaa_edades$total, fixed = TRUE))
+ccaa_edades$ccaa <- tolower(ccaa_edades$ccaa)
+
+ccaa_edades$ccaa <- stri_trans_general(ccaa_edades$ccaa, "Latin-ASCII")
+
+# he juntado a mano las edades en el csv, asi que las sumarizo
+ccaa_edades <- ccaa_edades %>% 
+  group_by(ccaa, edad) %>% 
+  summarise(total = sum(total, na.rm = T))
+  
+
+# le merge la poblacion para hacer %
+ccaa_edades <- ccaa_edades %>% 
+  merge(dens_pob, by = "ccaa") %>% 
+  select(ccaa, edad, total, poblacion) %>% 
+  mutate(porcentaje = total/poblacion) %>% 
+  select(ccaa, edad,porcentaje)
+
+
+  
+```
+
 
 
 ```{r}
@@ -599,13 +630,5 @@ colnames(super)
 
 
 
-
-
-## TODO ESPAÑA:
-
-* renta por ccaa
-* densidad de poblacion
-* tasa recuperacion por ccaa
-* arules a todo esto
 
 ```
