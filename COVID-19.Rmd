@@ -35,6 +35,7 @@ library(lubridate)
 library(stringr)
 library(stringi)
 library(arules)
+library(arulesViz)
 library(coronavirus)
 require(gridExtra)
 theme_set(theme_bw())
@@ -653,7 +654,7 @@ super_disc[, idx] <- lapply(super_disc[, idx], discretize, labels = c("bajo", "m
 head(super_disc)
 ```
 
-```{r}
+```{r, fig.height=15, fig.width=15}
 # aplico arules
 reglas <- apriori(super_disc,
                   parameter = list(confidence = 0.8, support = 0.1))
@@ -675,6 +676,7 @@ inspect(head(reglas_crecimiento2, 10))
 reglas_infectados <- subset(reglas, rhs %in% "porcentaje_infectados=alto") %>% 
   sort(by = "lift")
 inspect(head(reglas_infectados, 10))
+plot(head(reglas, 20), method="graph", engine="graphviz")
 
 # reglas que tengan como rhs solo pocas camas publicas
 reglas_camas_pub <- subset(reglas, lhs %in% "camas_publicas_100000=bajo") %>%
