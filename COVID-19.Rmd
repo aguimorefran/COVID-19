@@ -51,6 +51,8 @@ nacional <- read_csv("./datasets/nacional_covid19.csv")
 nacional$fecha <- as.Date(nacional$fecha)
 ```
 
+## Análisis previo
+
 ```{r}
 # fases de confinamiento y desescalada
 
@@ -639,6 +641,9 @@ super <- super %>%
 ```{r}
 colnames(super)
 ```
+## Reglas de asociación
+
+Después de juntarlo todo en un solo dataframe procedo a intentar sacar reglas de asociación.
 
 ```{r}
 # discretizo el df super
@@ -646,7 +651,7 @@ super_disc <- super
 
 # quito columna de poblacion
 super_disc <- super_disc %>% 
-  select(-c(poblacion))
+  select(-c(poblacion, total_infectados))
 
 # indices columnas numericas
 idx <- sapply(super_disc, class) == "numeric"
@@ -656,9 +661,9 @@ head(super_disc)
 
 ```{r, fig.height=10, fig.width=10}
 # aplico arules
-reglas <- apriori(super_disc,
+reglas_sucio <- apriori(super_disc,
                   parameter = list(confidence = 0.8, support = 0.1))
-reglas <- reglas[!is.redundant(reglas)] %>% 
+reglas <- reglas_sucio[!is.redundant(reglas_sucio)] %>% 
   sort(by = "lift")
 inspect(head(reglas, 10))
 
@@ -693,8 +698,36 @@ reglas_sanidad_camas <- subset(reglas, lhs %in% "camas_publicas_100000=bajo") %>
   subset(rhs %in% c("porcentaje_infectados=alto", "porcentaje_fallecidos=alto")) %>% 
   sort(by = "lift")
 inspect(head(reglas_sanidad_camas, 10))
-plot(head(reglas_sanidad_camas, 20), method = "graph", engine = "graphviz")
+plot(head(reglas_sanidad_camas, 15), method = "graph", engine = "graphviz")
 
+
+```
+
+## fcaR
+
+```{r}
+library(fcaR)
+```
+
+
+
+
+```{r}
+# preparo super_disc en transacciones
+super_disc_trans <- as(super_disc, "transactions")
+fc <- FormalContext$new(I = super_disc_trans)
+
+# reglas = reglas limpias
+fc$implications$add(reglas)
+
+plot(fc)
+
+# uso composicion generalizacion y simplificacion para reducir el numero de implicaciones
+fc$implications$apply_rules(rules = c("composition", "generalization", "simplification"), parallelize = F)
+
+fc$implications$cardinality()
+tams <- fc$implications$size()
+colMeans(tams)
 
 ```
 
