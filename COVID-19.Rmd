@@ -654,7 +654,7 @@ super_disc[, idx] <- lapply(super_disc[, idx], discretize, labels = c("bajo", "m
 head(super_disc)
 ```
 
-```{r, fig.height=15, fig.width=15}
+```{r, fig.height=10, fig.width=10}
 # aplico arules
 reglas <- apriori(super_disc,
                   parameter = list(confidence = 0.8, support = 0.1))
@@ -666,29 +666,35 @@ inspect(head(reglas, 10))
 reglas_crecimiento <- subset(reglas, rhs %in% "crecimiento_exp=alto")
 reglas_crecimiento <- sort(reglas_crecimiento, by = "lift")
 inspect(head(reglas_crecimiento, 10))
+plot(head(reglas_crecimiento, 10), method = "graph", engine = "graphviz")
 
 # crecimiento alto que contengan edad en lhs
 reglas_crecimiento2 <- subset(reglas_crecimiento, lhs %pin% "edad") %>% 
   sort(by = "lift")
 inspect(head(reglas_crecimiento2, 10))
+plot(head(reglas_crecimiento2, 15), method = "graph", engine = "graphviz")
 
 # reglas que impliquen porcentaje infectados alto
 reglas_infectados <- subset(reglas, rhs %in% "porcentaje_infectados=alto") %>% 
   sort(by = "lift")
 inspect(head(reglas_infectados, 10))
-plot(head(reglas, 20), method="graph", engine="graphviz")
+plot(head(reglas_infectados, 20), method = "graph", engine = "graphviz")
 
-# reglas que tengan como rhs solo pocas camas publicas
+
+# reglas que tengan como lhs solo pocas camas publicas
 reglas_camas_pub <- subset(reglas, lhs %in% "camas_publicas_100000=bajo") %>%
   subset(size(lhs) == 1) %>% 
   sort(by = "lift")
 inspect(head(reglas_camas_pub, 10))
+plot(head(reglas_camas_pub, 20), method = "graph", engine = "graphviz")
 
 # reglas con pocas camas publicas y (altos infectados o fallecidos)
-reglas_sanidad_camas <- subset(reglas, lhs %in% "camas_publicas_10000s0=bajo") %>%
+reglas_sanidad_camas <- subset(reglas, lhs %in% "camas_publicas_100000=bajo") %>%
   subset(rhs %in% c("porcentaje_infectados=alto", "porcentaje_fallecidos=alto")) %>% 
   sort(by = "lift")
 inspect(head(reglas_sanidad_camas, 10))
+plot(head(reglas_sanidad_camas, 20), method = "graph", engine = "graphviz")
+
 
 ```
 
