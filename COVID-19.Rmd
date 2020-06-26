@@ -703,32 +703,27 @@ plot(head(reglas_sanidad_camas, 15), method = "graph", engine = "graphviz")
 
 ```
 
-## fcaR
+## Regresión
+
+Iba a hacer un ggpairs pero con 11 variables no se ve nada.
+
+Como variable a predecir cogeré "porcentaje_fallecidos", ya que en principio es la prioridad a reducir.
 
 ```{r}
-library(fcaR)
+# quito ccaa, poblacion, total_infectados
+super_reg <- super %>% 
+  select(-c(ccaa, poblacion, total_infectados))
+colnames(super_reg)
 ```
 
 
 
-
 ```{r}
-# preparo super_disc en transacciones
-super_disc_trans <- as(super_disc, "transactions")
-fc <- FormalContext$new(I = super_disc_trans)
+g1 <- glmulti(names(super_reg[1]), names(super_reg[-1]), data = super_reg, level = 1, plotty = F, report = F)
+g2 <- glmulti(names(super_reg[1]), names(super_reg[-1]), data = super_reg, method = "d")
 
-# reglas = reglas limpias
-fc$implications$add(reglas)
-
-plot(fc)
-
-# uso composicion generalizacion y simplificacion para reducir el numero de implicaciones
-fc$implications$apply_rules(rules = c("composition", "generalization", "simplification"), parallelize = F)
-
-fc$implications$cardinality()
-tams <- fc$implications$size()
-colMeans(tams)
-
+summary(g1)$bestmodel
+summary(g2)$bestmodel
 ```
 
 
