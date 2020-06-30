@@ -16,6 +16,7 @@ output:
 * **ggplot2** para visualización de datos.
 * **arules** para reglas de asociación.
 * **coronavirus** para obtener datos actualizados.
+* **caTools** para separar el dataset en una proporción dada.
 
 # Datasets
 
@@ -38,6 +39,7 @@ library(arules)
 library(arulesViz)
 library(coronavirus)
 require(gridExtra)
+library(caTools)
 theme_set(theme_bw())
 ```
 
@@ -663,7 +665,7 @@ head(super_disc)
 # aplico arules
 reglas_sucio <- apriori(super_disc,
                   parameter = list(confidence = 0.8, support = 0.1))
-reglas <- reglas_sucio[!is.redundant(reglas_sucio)] %>% 
+reglas <- reglas_sucio[is.redundant(reglas_sucio)] %>% 
   sort(by = "lift")
 inspect(head(reglas, 10))
 
@@ -686,13 +688,6 @@ inspect(head(reglas_infectados, 10))
 plot(head(reglas_infectados, 20), method = "graph", engine = "graphviz")
 
 
-# reglas que tengan como lhs solo pocas camas publicas
-reglas_camas_pub <- subset(reglas, lhs %in% "camas_publicas_100000=bajo") %>%
-  subset(size(lhs) == 1) %>% 
-  sort(by = "lift")
-inspect(head(reglas_camas_pub, 10))
-plot(head(reglas_camas_pub, 20), method = "graph", engine = "graphviz")
-
 # reglas con pocas camas publicas y (altos infectados o fallecidos)
 reglas_sanidad_camas <- subset(reglas, lhs %in% "camas_publicas_100000=bajo") %>%
   subset(rhs %in% c("porcentaje_infectados=alto", "porcentaje_fallecidos=alto")) %>% 
@@ -714,16 +709,71 @@ Como variable a predecir cogeré "porcentaje_fallecidos", ya que en principio es
 super_reg <- super %>% 
   select(-c(ccaa, poblacion, total_infectados))
 colnames(super_reg)
+
+# acorto el nombre de las variables
+super_reg <- super_reg %>% 
+  rename("perc_fallecidos" = porcentaje_fallecidos,
+         "perc_viv_sec" = porcentaje_vivs_secundarias,
+         "camas_priv" = camas_privadas_100000,
+         "camas_pub" = camas_publicas_100000,
+         "total_camas" = total_camas_100000,
+         "perc_sanidad" = porcentaje_sanidad,
+         "perc_infec" = porcentaje_infectados)
+colnames(super_reg)
 ```
 
 
 
 ```{r}
-g1 <- glmulti(names(super_reg[1]), names(super_reg[-1]), data = super_reg, level = 1, plotty = F, report = F)
-g2 <- glmulti(names(super_reg[1]), names(super_reg[-1]), data = super_reg, method = "d")
+# busco el mejor ajuste a mano (seguramente no tenga mucho sentido porque solo tengo 17 filas)
+# mi idea es ir añadiendo variables al modelo hasta que r2 ajustado es menor que r2
 
-summary(g1)$bestmodel
-summary(g2)$bestmodel
+# separo en train 0.75 y test 0.25
+idx <- sample.split(super_reg$perc_fallecidos, SplitRatio = 0.75)
+
+# donde guardare los conjuntos
+cc <- list(train = super_reg[idx, ], test = super_reg[!idx, ])
+str(cc)
+
+# funcion que saca ajuste lineal dado un df, y, y un vector de variables
+linearAdj <- function(df, y, vectorx){
+  lm(str_c(y, "~", str_c(vectorx, collapse = "+")), df)
+} #end of func
+
+# funcion que nos devuelve el r2
+calcModR2 <- function(dfTrain, dfTest, y, x){
+  mod <- linearAdj(dfTrain, y, x)
+  calcR2(dfTest, mod, y)$aR2
+} #end of func
+
+# funcion que itera sobre las variables predictoras para encontrar el mejor r2 ajustado
+encontrarMejorAjuste <- function(dfTrain, dfTest, varPos, y) {
+   bestVars <- character(0)
+   aR2      <- 0
+   
+   repeat {
+     aR2v <- map_dbl(varPos, ~calcModR2(dfTrain, dfTest, y, c(bestVars, .)))
+     i    <- which.max(aR2v)
+     aR2M <- aR2v[i]
+     if (aR2M <= aR2) break
+     
+     cat(sprintf("%1.4f %s\n", aR2M, varPos[i]))
+     aR2 <- aR2M
+     bestVars <- c(bestVars, varPos[i])
+     varPos   <- varPos[-i]
+   }
+   
+   mod <- linearAdj(dfTrain, y, bestVars)
+   
+   list(vars=bestVars, mod=mod)
+} #end of func
+
+# variables predictivas
+varPred <- super_reg %>% 
+  select(-perc_fallecidos) %>% 
+  colnames
+
+mejorAjuste <- encontrarMejorAjuste(cc$train, cc$test, varPred, 'perc_fallecidos')
 ```
 
 
